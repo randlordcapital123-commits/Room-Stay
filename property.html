@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Room details — Room Stay</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d1d1f'/%3E%3Cpath d='M22 52V18a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v34' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linejoin='round'/%3E%3Ccircle cx='38' cy='34' r='1.9' fill='%230071e3'/%3E%3Cpath d='M16 52h32' stroke='%230071e3' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="public.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 21V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/>
+          <circle cx="14.5" cy="12" r="0.9" fill="currentColor" stroke="none"/>
+        </svg>
+      </span>
+      <span class="brand-name"><span class="brand-first">Room</span><span class="brand-second">Stay</span></span>
+    </a>
+    <div class="header-actions">
+      <a class="btn btn-ghost" href="index.html">Back to rooms</a>
+      <a class="btn btn-dark" href="landlord.html">List a room</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap detail-wrap" id="detailRoot">
+  <div class="loading">Loading room…</div>
+</main>
+
+<div class="modal-overlay hidden" id="bookingModal">
+  <div class="modal-card">
+    <button class="modal-close" id="closeBooking" aria-label="Close">×</button>
+    <h2>Book a viewing</h2>
+    <p>Tell us a little about yourself so the agent can prepare.</p>
+    <form id="bookingForm">
+      <label class="field"><span>Full name</span><input id="bookName" required placeholder="e.g. Lerato Dube"></label>
+      <label class="field"><span>Phone number</span><input id="bookPhone" required placeholder="082 111 2233"></label>
+      <label class="field"><span>Email</span><input type="email" id="bookEmail" placeholder="you@example.com"></label>
+      <label class="field"><span>How many people will move in?</span><input type="number" id="bookPeople" min="1" value="1" required></label>
+      <label class="field"><span>Estimated move-in date</span><input type="date" id="bookMoveIn" required></label>
+      <label class="field"><span>Are you working?</span>
+        <select id="bookEmployment">
+          <option>Working full-time</option><option>Working part-time</option>
+          <option>Student</option><option>Working &amp; studying</option><option>Other</option>
+        </select>
+      </label>
+      <button class="btn btn-primary btn-block" type="submit">Send request</button>
+    </form>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <p>© <span id="year"></span> Room Stay. Rooms listed by verified landlords.</p>
+    <div class="footer-links">
+      <a href="landlord.html">Landlord portal</a>
+      <a class="footer-gear" href="admin.html" title="Admin" aria-label="Admin access">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2.5v2.2"/><path d="M12 19.3v2.2"/><path d="M4.2 4.2l1.6 1.6"/>
+          <path d="M18.2 18.2l1.6 1.6"/><path d="M2.5 12h2.2"/><path d="M19.3 12h2.2"/>
+          <path d="M4.2 19.8l1.6-1.6"/><path d="M18.2 5.8l1.6-1.6"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+</footer>
+
+<div class="toast-stack" id="toastStack"></div>
+<script src="public.js?v=7"></script>
+</body>
+</html>

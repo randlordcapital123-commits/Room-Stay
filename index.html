@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Room Stay — Rooms to rent</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d1d1f'/%3E%3Cpath d='M22 52V18a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v34' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linejoin='round'/%3E%3Ccircle cx='38' cy='34' r='1.9' fill='%230071e3'/%3E%3Cpath d='M16 52h32' stroke='%230071e3' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="public.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 21V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/>
+          <circle cx="14.5" cy="12" r="0.9" fill="currentColor" stroke="none"/>
+        </svg>
+      </span>
+      <span class="brand-name"><span class="brand-first">Room</span><span class="brand-second">Stay</span></span>
+    </a>
+    <nav class="header-nav">
+      <a href="#results">Browse</a>
+      <a href="#how">How it works</a>
+    </nav>
+    <div class="header-actions">
+      <a class="btn btn-dark" href="landlord.html">List a room</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-content">
+      <h1>Find a room that<br>feels like home.</h1>
+      <p class="hero-sub">Real photos, honest pricing and a real person to call. No surprises.</p>
+    </div>
+    <div class="hero-visual" id="heroVisual">
+      <svg viewBox="0 0 500 400" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="hw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#faf6f0"/><stop offset="1" stop-color="#ede4d8"/></linearGradient>
+          <linearGradient id="hs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a8cde8"/><stop offset="1" stop-color="#d8eaf8"/></linearGradient>
+          <linearGradient id="hf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d8c8b0"/><stop offset="1" stop-color="#c4b098"/></linearGradient>
+        </defs>
+        <rect width="500" height="280" fill="url(#hw)"/>
+        <rect y="280" width="500" height="120" fill="url(#hf)"/>
+        <rect x="290" y="50" width="170" height="180" fill="url(#hs)" rx="6" stroke="#f0e8dc" stroke-width="10"/>
+        <line x1="375" y1="50" x2="375" y2="230" stroke="#f0e8dc" stroke-width="6"/>
+        <line x1="290" y1="140" x2="460" y2="140" stroke="#f0e8dc" stroke-width="6"/>
+        <circle cx="322" cy="90" r="14" fill="#ffd966" opacity="0.85"/>
+        <rect x="310" y="180" width="25" height="50" fill="#7aa8c4" opacity="0.5"/>
+        <rect x="345" y="160" width="35" height="70" fill="#7aa8c4" opacity="0.45"/>
+        <rect x="40" y="230" width="220" height="80" fill="#f8f6f2" rx="10"/>
+        <rect x="40" y="205" width="90" height="40" fill="#fff" rx="8"/>
+        <ellipse cx="85" cy="225" rx="32" ry="13" fill="#d8eaf8"/>
+        <rect x="250" y="200" width="40" height="40" fill="#d8c8b0" rx="4"/>
+        <rect x="267" y="170" width="6" height="30" fill="#888"/>
+        <path d="M257 170 L283 170 L278 148 L262 148 Z" fill="#ffd966"/>
+        <rect x="70" y="150" width="44" height="60" fill="#a8845c" rx="4"/>
+        <path d="M92 150 Q65 110 52 135 Q80 145 92 150" fill="#5ba370"/>
+        <path d="M92 150 Q120 100 138 130 Q110 145 92 150" fill="#5ba370"/>
+        <path d="M92 150 Q90 100 96 88 Q104 110 92 150" fill="#4a8d5e"/>
+        <rect x="60" y="60" width="110" height="75" fill="#fff" stroke="#c4b098" stroke-width="3"/>
+        <rect x="70" y="70" width="90" height="55" fill="#d8eaf8"/>
+        <circle cx="115" cy="98" r="14" fill="#ffd966" opacity="0.8"/>
+      </svg>
+    </div>
+  </div>
+  <div class="wrap">
+    <form class="searchbar" id="searchForm" autocomplete="off">
+      <div class="search-field search-grow">
+        <span class="field-icon" id="searchIcon"></span>
+        <input type="search" id="searchInput" placeholder="Search suburb, city or street">
+      </div>
+      <span class="search-sep"></span>
+      <div class="search-field">
+        <select id="typeSelect">
+          <option value="all">Any type</option>
+          <option value="Room">Room</option>
+          <option value="Studio">Studio</option>
+          <option value="Cottage">Cottage</option>
+          <option value="Flatlet">Flatlet</option>
+        </select>
+      </div>
+      <span class="search-sep"></span>
+      <div class="search-field">
+        <select id="priceSelect">
+          <option value="0">Any price</option>
+          <option value="1000">Under R1 000</option>
+          <option value="1500">Under R1 500</option>
+          <option value="2000">Under R2 000</option>
+          <option value="3000">Under R3 000</option>
+        </select>
+      </div>
+      <button class="btn btn-primary search-btn" type="submit">Search</button>
+    </form>
+  </div>
+</section>
+
+<section class="filters wrap" id="results">
+  <div class="filter-head">
+    <h2 class="filter-title">Browse rooms</h2>
+    <div class="filter-right">
+      <span class="result-count" id="resultCount">—</span>
+      <select id="sortSelect" class="mini-select">
+        <option value="newest">Newest first</option>
+        <option value="price-asc">Price: low to high</option>
+        <option value="price-desc">Price: high to low</option>
+      </select>
+    </div>
+  </div>
+  <div class="chip-row" id="amenityChips"></div>
+</section>
+
+<main class="wrap">
+  <div class="grid" id="grid"></div>
+  <div class="empty hidden" id="emptyState">
+    <div class="empty-icon" id="emptyIcon"></div>
+    <h3>No rooms listed yet</h3>
+    <p>Be the first — list your room and it will appear here once approved.</p>
+    <a class="btn btn-dark" href="landlord.html">List a room</a>
+  </div>
+</main>
+
+<section class="how wrap" id="how">
+  <h2>How Room Stay works</h2>
+  <div class="how-grid">
+    <div class="how-card"><div class="how-ico" id="howIco1"></div><h3>Search &amp; filter</h3><p>Filter by price, area and the things that matter.</p></div>
+    <div class="how-card"><div class="how-ico" id="howIco2"></div><h3>Real photos</h3><p>Every listing is reviewed before it goes live.</p></div>
+    <div class="how-card"><div class="how-ico" id="howIco3"></div><h3>Talk to an agent</h3><p>Each room has a named agent. One call to book.</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <p>© <span id="year"></span> Room Stay. Rooms listed by verified landlords.</p>
+    <div class="footer-links">
+      <a href="landlord.html">Landlord portal</a>
+      <a class="footer-gear" href="admin.html" title="Admin" aria-label="Admin access">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2.5v2.2"/><path d="M12 19.3v2.2"/><path d="M4.2 4.2l1.6 1.6"/>
+          <path d="M18.2 18.2l1.6 1.6"/><path d="M2.5 12h2.2"/><path d="M19.3 12h2.2"/>
+          <path d="M4.2 19.8l1.6-1.6"/><path d="M18.2 5.8l1.6-1.6"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+</footer>
+
+<div class="toast-stack" id="toastStack"></div>
+<script src="public.js?v=7"></script>
+</body>
+</html>

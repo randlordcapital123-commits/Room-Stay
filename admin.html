@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin — Room Stay</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d1d1f'/%3E%3Cpath d='M22 52V18a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v34' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linejoin='round'/%3E%3Ccircle cx='38' cy='34' r='1.9' fill='%230071e3'/%3E%3Cpath d='M16 52h32' stroke='%230071e3' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body data-page="admin">
+
+<div class="login-screen" id="loginScreen">
+  <form class="login-card" id="loginForm">
+    <div class="login-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3l7.5 3v6.1c0 4.5-3.1 7.9-7.5 9.4-4.4-1.5-7.5-4.9-7.5-9.4V6L12 3z"/>
+        <path d="M9 12l2 2 4-4"/>
+      </svg>
+    </div>
+    <h1 id="loginTitle">Admin access</h1>
+    <p class="login-sub" id="loginSub">Enter your admin password.</p>
+    <label class="field"><span>Password</span><input type="password" id="adminPass" required placeholder="Enter password"></label>
+    <p class="login-error" id="loginError"></p>
+    <button class="btn btn-primary btn-block" type="submit" id="loginSubmitBtn">Sign in</button>
+  </form>
+</div>
+
+<div class="admin-app hidden" id="app">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 21V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/>
+          <circle cx="14.5" cy="12" r="0.9" fill="currentColor" stroke="none"/>
+        </svg>
+      </span>
+      <div>
+        <span class="brand-name"><span class="brand-first">Room</span><span class="brand-second">Stay</span></span>
+        <small>Admin dashboard</small>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-view="overview"><span class="nav-ico" data-ico="home"></span>Overview</button>
+      <button class="nav-item" data-view="properties"><span class="nav-ico" data-ico="bed"></span>Listings <span class="nav-badge" id="pendingBadge">0</span></button>
+      <button class="nav-item" data-view="enquiries"><span class="nav-ico" data-ico="mail"></span>Viewing requests <span class="nav-badge" id="enqBadge">0</span></button>
+      <button class="nav-item" data-view="agents"><span class="nav-ico" data-ico="users"></span>Agents</button>
+      <button class="nav-item" data-view="settings"><span class="nav-ico" data-ico="settings"></span>Settings</button>
+    </nav>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="index.html" target="_blank"><span class="nav-ico" data-ico="arrowLeft"></span>View public site</a>
+      <button class="nav-item" id="signOutBtn"><span class="nav-ico" data-ico="logout"></span>Sign out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <section class="view" data-view="overview">
+      <header class="view-head"><h1>Overview</h1><p>Everything happening on Room Stay right now.</p></header>
+      <div class="stat-grid" id="statGrid"></div>
+      <div class="panel">
+        <div class="panel-head"><h2>Awaiting your approval</h2>
+          <button class="btn btn-ghost btn-sm" data-goto="properties">See all listings</button></div>
+        <div class="pending-list" id="pendingList"></div>
+      </div>
+    </section>
+
+    <section class="view hidden" data-view="properties">
+      <header class="view-head"><h1>Listings</h1><p>Approve rooms, set the public price and assign an agent.</p></header>
+      <div class="tabs" id="statusTabs">
+        <button class="tab active" data-status="all">All</button>
+        <button class="tab" data-status="pending">Pending</button>
+        <button class="tab" data-status="approved">Live</button>
+        <button class="tab" data-status="rejected">Rejected</button>
+      </div>
+      <div class="rows" id="propertyRows"></div>
+    </section>
+
+    <section class="view hidden" data-view="enquiries">
+      <header class="view-head"><h1>Viewing requests</h1><p>Every enquiry submitted from the public site. Call the tenant, notify the agent, and mark it contacted when done.</p></header>
+      <div class="tabs" id="enqTabs"><button class="tab active" data-agent="all">All</button></div>
+      <div class="rows" id="enquiryRows"></div>
+    </section>
+
+    <section class="view hidden" data-view="agents">
+      <header class="view-head"><h1>Agents</h1><p>Agents appear on the public listing as the contact person.</p></header>
+      <div class="two-col">
+        <form class="panel form-panel" id="agentForm">
+          <h2>Add an agent</h2>
+          <label class="field"><span>Full name</span><input id="agentName" required placeholder="e.g. Lerato Dube"></label>
+          <label class="field"><span>Phone</span><input id="agentPhone" required placeholder="071 222 3344"></label>
+          <label class="field"><span>Email</span><input type="email" id="agentEmail" placeholder="name@roomstay.co.za"></label>
+          <button class="btn btn-primary btn-block" type="submit">Add agent</button>
+        </form>
+        <div class="panel"><h2>Agent list</h2><div class="agent-list" id="agentList"></div></div>
+      </div>
+    </section>
+
+    <section class="view hidden" data-view="settings">
+      <header class="view-head"><h1>Settings</h1><p>Defaults applied to new listings.</p></header>
+      <form class="panel form-panel narrow" id="settingsForm">
+        <label class="field"><span>Site name</span><input id="setSiteName"></label>
+        <label class="field"><span>Default commission (R)</span><input type="number" id="setCommission" min="0" step="50"></label>
+        <label class="field"><span>Change admin password</span><input type="password" id="setPassword" placeholder="Leave blank to keep current" autocomplete="new-password"></label>
+        <div class="subhead"><h2>Hero image</h2><p>Shown at the top of the public homepage.</p></div>
+        <div class="upload-zone" id="heroUploadZone" role="button" tabindex="0">
+          <span class="upload-ico" id="heroUploadIco"></span>
+          <strong>Click to upload hero image</strong>
+          <small>JPG or PNG · Landscape works best</small>
+          <input type="file" id="heroImageInput" accept="image/*" hidden>
+        </div>
+        <div id="heroPreviewWrap" class="hero-preview-wrap hidden">
+          <img id="heroPreview" alt="Hero preview">
+          <button type="button" id="removeHeroBtn" class="btn btn-ghost btn-sm">Remove image</button>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Save settings</button>
+        </div>
+      </form>
+    </section>
+  </main>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+<script src="dashboard.js?v=7"></script>
+</body>
+</html>
