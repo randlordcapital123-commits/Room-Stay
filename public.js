@@ -2,7 +2,6 @@
 (function () {
   'use strict';
 
-  /* ---- Load Parse SDK on demand ---- */
   function loadParse() {
     if (window.Parse) return Promise.resolve();
     return new Promise(function (resolve, reject) {
@@ -16,13 +15,9 @@
   }
 
   function boot() {
-    Parse.initialize(
-      'yZd1tyOC06p5XRKmUwNkaip9UUMoQoteFPKcrTSe',
-      '1pZ0JnP06gfyVGj6CHXWREo3rqsu7HmLixCCxgrk'
-    );
+    Parse.initialize('yZd1tyOC06p5XRKmUwNkaip9UUMoQoteFPKcrTSe', '1pZ0JnP06gfyVGj6CHXWREo3rqsu7HmLixCCxgrk');
     Parse.serverURL = 'https://parseapi.back4app.com/';
 
-    /* ---- Icons ---- */
     function svg(inner) {
       return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" ' +
              'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
@@ -66,6 +61,8 @@
       return k;
     }
 
+    var WITBANK_SUBURBS = ['Witbank Central','Del Judor','Reyno Ridge','Die Heuwel','Model Park','Tasbet Park','Klarinet','Emalahleni','Middelburg','Hendrina','Kriel','Bethal'];
+
     function $(s, r) { return (r || document).querySelector(s); }
     function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
     function escapeHtml(v) {
@@ -108,7 +105,6 @@
       return [];
     }
 
-    /* ---- Data layer ---- */
     async function fetchApproved() {
       var q = new Parse.Query('Property');
       q.equalTo('status', 'approved');
@@ -116,17 +112,10 @@
       q.limit(200);
       try { return await q.find(); } catch (e) { console.error(e); return []; }
     }
-    async function fetchById(id) {
-      try { return await new Parse.Query('Property').get(id); } catch (e) { return null; }
-    }
-    async function fetchAgent(id) {
-      if (!id) return null;
-      try { return await new Parse.Query('Agent').get(id); } catch (e) { return null; }
-    }
-    async function fetchSettings() {
-      try { var r = await new Parse.Query('SiteSettings').limit(1).find(); return r[0] || null; }
-      catch (e) { return null; }
-    }
+    async function fetchById(id) { try { return await new Parse.Query('Property').get(id); } catch (e) { return null; } }
+    async function fetchAgent(id) { if (!id) return null; try { return await new Parse.Query('Agent').get(id); } catch (e) { return null; } }
+    async function fetchSettings() { try { var r = await new Parse.Query('SiteSettings').limit(1).find(); return r[0] || null; } catch (e) { return null; } }
+
     async function submitEnquiry(data) {
       var Enq = Parse.Object.extend('Enquiry');
       var e = new Enq();
@@ -139,12 +128,8 @@
     function toPlain(p) {
       var ag = p.get('agent');
       return {
-        id: p.id,
-        title: p.get('title') || '',
-        description: p.get('description') || '',
-        suburb: p.get('suburb') || '',
-        city: p.get('city') || '',
-        address: p.get('address') || '',
+        id: p.id, title: p.get('title') || '', description: p.get('description') || '',
+        suburb: p.get('suburb') || '', city: p.get('city') || '', address: p.get('address') || '',
         type: p.get('type') || 'Room',
         bedrooms: Number(p.get('bedrooms')) || 0,
         bathrooms: Number(p.get('bathrooms')) || 0,
@@ -154,17 +139,14 @@
         images: parseArray(p.get('images')),
         agentId: ag ? ag.id : null,
         status: p.get('status') || 'pending',
+        managed: !!p.get('managed'),
         createdAt: p.createdAt ? p.createdAt.getTime() : Date.now()
       };
     }
 
-    /* ---- Routing ---- */
     if (document.getElementById('detailRoot')) initProperty();
     else if (document.getElementById('grid')) initIndex();
 
-    /* =========================================================
-       INDEX PAGE
-       ========================================================= */
     async function initIndex() {
       var state = { q:'', type:'all', maxPrice:0, sort:'newest', amenities:[] };
 
@@ -175,14 +157,12 @@
       $('#howIco3').innerHTML = icon('phone');
       var yearEl = $('#year'); if (yearEl) yearEl.textContent = new Date().getFullYear();
 
-      /* Hero */
       var settings = await fetchSettings();
       if (settings && settings.get('heroImage')) {
         var hv = document.getElementById('heroVisual');
         if (hv) { hv.innerHTML = ''; var img = document.createElement('img'); img.src = settings.get('heroImage'); img.alt = 'Room Stay hero'; hv.appendChild(img); }
       }
 
-      /* Chips */
       $('#amenityChips').innerHTML = AMENITIES.map(function (a) {
         return '<button type="button" class="chip" data-amenity="' + a.key + '">' +
                '<span class="chip-ico">' + icon(a.key) + '</span>' + escapeHtml(a.label) + '</button>';
@@ -191,7 +171,6 @@
       var results = await fetchApproved();
       var all = results.map(toPlain);
 
-      /* Agent cache */
       var agentCache = {};
       async function getAgent(id) {
         if (!id) return null;
@@ -285,9 +264,6 @@
       render();
     }
 
-    /* =========================================================
-       PROPERTY PAGE
-       ========================================================= */
     async function initProperty() {
       var root = $('#detailRoot');
       var id = new URLSearchParams(location.search).get('id');
@@ -324,9 +300,7 @@
           '<div class="agent-line">' + icon('mail') + 'hello@roomstay.co.za</div></div>';
 
       var baths = Number(p.bathrooms) || 0;
-      var bathChip = baths > 0
-        ? '<span class="meta-chip">' + icon('bath') + baths + ' bathroom' + (baths > 1 ? 's' : '') + '</span>'
-        : '';
+      var bathChip = baths > 0 ? '<span class="meta-chip">' + icon('bath') + baths + ' bathroom' + (baths > 1 ? 's' : '') + '</span>' : '';
 
       function timeAgo(ts) {
         if (!ts) return 'recently';
@@ -345,6 +319,7 @@
           '<span class="meta-chip">' + icon('home') + escapeHtml(p.type) + '</span>' +
           '<span class="meta-chip">' + icon('bed') + p.bedrooms + ' bedroom' + (p.bedrooms > 1 ? 's' : '') + '</span>' +
           bathChip +
+          (p.managed ? '<span class="meta-chip" style="background:var(--accent-soft);color:var(--accent);border-color:var(--accent)">Managed by Room Stay</span>' : '') +
           '<span class="meta-chip">' + icon('clock') + 'Listed ' + timeAgo(p.createdAt) + '</span>' +
         '</div>' +
         '<h2 class="section-title">About this room</h2>' +
@@ -353,7 +328,7 @@
         (amenityItems ? '<div class="amenity-grid">' + amenityItems + '</div>' : '<p class="desc">No extra amenities listed.</p>') +
         '</div><aside class="aside">' +
           '<div class="price-card"><div class="price-big">' + money(p.publicPrice) + ' <small>/month</small></div>' +
-          '<p class="price-note">Deposit and lease terms confirmed at viewing.</p>' +
+          '<p class="price-note">' + (p.managed ? 'Price includes rent and management fee. Deposit confirmed at viewing.' : 'Deposit and lease terms confirmed at viewing.') + '</p>' +
           '<button class="btn btn-primary" id="bookBtn">Book a viewing</button></div>' +
           agentBlock +
         '</aside></div>';
@@ -414,8 +389,5 @@
     }
   }
 
-  /* ---- Kick everything off once Parse is loaded ---- */
-  loadParse().then(boot).catch(function (err) {
-    console.error('Room Stay: failed to load Parse SDK', err);
-  });
+  loadParse().then(boot).catch(function (err) { console.error('Room Stay: failed to load Parse', err); });
 })();

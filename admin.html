@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Admin — Room Stay</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d1d1f'/%3E%3Cpath d='M22 52V18a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v34' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linejoin='round'/%3E%3Ccircle cx='38' cy='34' r='1.9' fill='%230071e3'/%3E%3Cpath d='M16 52h32' stroke='%230071e3' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23FF6B00'/%3E%3Cpath d='M16 30 32 16l16 14v18a3 3 0 0 1-3 3H19a3 3 0 0 1-3-3V30z' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M26 51V36h12v15' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linejoin='round'/%3E%3Ccircle cx='35' cy='44' r='1.6' fill='%23ffffff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="dashboard.css">
 </head>
 <body data-page="admin">
@@ -12,13 +12,14 @@
 <div class="login-screen" id="loginScreen">
   <form class="login-card" id="loginForm">
     <div class="login-mark">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 3l7.5 3v6.1c0 4.5-3.1 7.9-7.5 9.4-4.4-1.5-7.5-4.9-7.5-9.4V6L12 3z"/>
-        <path d="M9 12l2 2 4-4"/>
+      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path d="M6 15 16 6l10 9v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V15z" fill="#fff"/>
+        <path d="M12 27V18h8v9" fill="#FF6B00"/>
+        <circle cx="18" cy="22.5" r="1" fill="#fff"/>
       </svg>
     </div>
     <h1 id="loginTitle">Admin access</h1>
-    <p class="login-sub" id="loginSub">Enter your admin password.</p>
+    <p class="login-sub" id="loginSub">Sign in to review listings, set public prices and manage agents.</p>
     <label class="field"><span>Password</span><input type="password" id="adminPass" required placeholder="Enter password"></label>
     <p class="login-error" id="loginError"></p>
     <button class="btn btn-primary btn-block" type="submit" id="loginSubmitBtn">Sign in</button>
@@ -29,9 +30,10 @@
   <aside class="sidebar">
     <div class="sidebar-brand">
       <span class="brand-mark">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M7 21V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/>
-          <circle cx="14.5" cy="12" r="0.9" fill="currentColor" stroke="none"/>
+        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <path d="M6 15 16 6l10 9v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V15z" fill="#fff"/>
+          <path d="M12 27V18h8v9" fill="#FF6B00"/>
+          <circle cx="18" cy="22.5" r="1" fill="#fff"/>
         </svg>
       </span>
       <div>
@@ -64,7 +66,7 @@
     </section>
 
     <section class="view hidden" data-view="properties">
-      <header class="view-head"><h1>Listings</h1><p>Approve rooms, set the public price and assign an agent.</p></header>
+      <header class="view-head"><h1>Listings</h1><p>Approve rooms, set public prices and assign an agent.</p></header>
       <div class="tabs" id="statusTabs">
         <button class="tab active" data-status="all">All</button>
         <button class="tab" data-status="pending">Pending</button>
@@ -75,7 +77,7 @@
     </section>
 
     <section class="view hidden" data-view="enquiries">
-      <header class="view-head"><h1>Viewing requests</h1><p>Every enquiry submitted from the public site. Call the tenant, notify the agent, and mark it contacted when done.</p></header>
+      <header class="view-head"><h1>Viewing requests</h1><p>Every enquiry submitted from the public site.</p></header>
       <div class="tabs" id="enqTabs"><button class="tab active" data-agent="all">All</button></div>
       <div class="rows" id="enquiryRows"></div>
     </section>
@@ -99,6 +101,7 @@
       <form class="panel form-panel narrow" id="settingsForm">
         <label class="field"><span>Site name</span><input id="setSiteName"></label>
         <label class="field"><span>Default commission (R)</span><input type="number" id="setCommission" min="0" step="50"></label>
+        <label class="field"><span>Management fee (%)</span><input type="number" id="setMgmtFee" min="0" step="1"></label>
         <label class="field"><span>Change admin password</span><input type="password" id="setPassword" placeholder="Leave blank to keep current" autocomplete="new-password"></label>
         <div class="subhead"><h2>Hero image</h2><p>Shown at the top of the public homepage.</p></div>
         <div class="upload-zone" id="heroUploadZone" role="button" tabindex="0">
@@ -120,6 +123,6 @@
 </div>
 
 <div class="toast-stack" id="toastStack"></div>
-<script src="dashboard.js?v=7"></script>
+<script src="dashboard.js?v=11"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Landlord portal — Room Stay</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d1d1f'/%3E%3Cpath d='M22 52V18a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v34' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linejoin='round'/%3E%3Ccircle cx='38' cy='34' r='1.9' fill='%230071e3'/%3E%3Cpath d='M16 52h32' stroke='%230071e3' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23FF6B00'/%3E%3Cpath d='M16 30 32 16l16 14v18a3 3 0 0 1-3 3H19a3 3 0 0 1-3-3V30z' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M26 51V36h12v15' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linejoin='round'/%3E%3Ccircle cx='35' cy='44' r='1.6' fill='%23ffffff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="dashboard.css">
 </head>
 <body data-page="landlord">
@@ -12,19 +12,21 @@
 <div class="login-screen" id="loginScreen">
   <form class="login-card" id="loginForm">
     <div class="login-mark">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M7 21V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/>
-        <circle cx="14.5" cy="12" r="0.9" fill="currentColor" stroke="none"/>
+      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path d="M6 15 16 6l10 9v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V15z" fill="#fff"/>
+        <path d="M12 27V18h8v9" fill="#FF6B00"/>
+        <circle cx="18" cy="22.5" r="1" fill="#fff"/>
       </svg>
     </div>
     <h1>Landlord portal</h1>
-    <p class="login-sub">Sign in to list rooms. First time? Your account is created automatically.</p>
+    <p class="login-sub">Sign in to list rooms in Witbank. First time? Your account is created automatically.</p>
     <label class="field"><span>Full name</span><input id="loginName" required placeholder="e.g. Thandi Mokoena"></label>
     <label class="field"><span>Email</span><input type="email" id="loginEmail" required placeholder="you@example.com" autocomplete="email"></label>
     <label class="field"><span>Phone</span><input id="loginPhone" placeholder="082 111 2233"></label>
     <label class="field"><span>Password</span><input type="password" id="loginPass" required minlength="8" placeholder="At least 8 characters" autocomplete="current-password"></label>
     <p class="login-error" id="loginError"></p>
     <button class="btn btn-primary btn-block" type="submit">Continue</button>
+    <p class="login-hint">Basic plan · R50/month · 2 room slots</p>
   </form>
 </div>
 
@@ -33,9 +35,10 @@
     <div class="wrap topbar-inner">
       <a class="brand" href="index.html">
         <span class="brand-mark">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M7 21V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/>
-            <circle cx="14.5" cy="12" r="0.9" fill="currentColor" stroke="none"/>
+          <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path d="M6 15 16 6l10 9v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V15z" fill="#fff"/>
+            <path d="M12 27V18h8v9" fill="#FF6B00"/>
+            <circle cx="18" cy="22.5" r="1" fill="#fff"/>
           </svg>
         </span>
         <span class="brand-name"><span class="brand-first">Room</span><span class="brand-second">Stay</span></span>
@@ -50,11 +53,23 @@
 
   <main class="wrap main">
     <section id="listingsView">
-      <header class="view-head"><h1>My rooms</h1><p>Your listed rooms and their review status.</p></header>
+      <header class="view-head">
+        <h1>My rooms</h1>
+        <p>Your listed rooms and their review status.</p>
+      </header>
+
+      <div class="plan-card" id="planCard">
+        <div>
+          <h3>Basic plan</h3>
+          <p><strong>R50 / month</strong> · 2 room slots. Every room you post counts against your slots unless it's on Property Management.</p>
+        </div>
+        <span class="plan-slots" id="planSlots">0 / 2 used</span>
+      </div>
+
       <div class="my-grid" id="myGrid"></div>
       <div class="empty hidden" id="myEmpty">
         <h3>You have no listings yet</h3>
-        <p>Post your first room and our team will review it within a day.</p>
+        <p>Post your first room. Free trial for your first room — R50/month after.</p>
         <button class="btn btn-primary" id="emptyAddBtn">Post a room</button>
       </div>
     </section>
@@ -63,23 +78,45 @@
       <header class="view-head">
         <button class="link-back" id="backToListings">← Back to my rooms</button>
         <h1 id="formTitle">Post a room</h1>
-        <p>Set your price. Room Stay adds a small service fee on top.</p>
+        <p>Witbank and surrounding areas only.</p>
       </header>
+
+      <div class="info-panel">
+        <h3>How property management works</h3>
+        <p>
+          By default, you list a room, set your price, and Room Stay adds a small commission on top. <strong>You collect the rent yourself.</strong> Your R50/month plan fee keeps your listing active.
+        </p>
+        <p>
+          If you tick <strong>"Let Room Stay manage this property"</strong>, we take over the collection: the tenant pays Room Stay, and we pay you your full rental amount monthly. In return, <strong>we charge you no R50 monthly fee for that property</strong>. We earn a 15% management fee on top of your rent, paid by the tenant.
+        </p>
+        <p>
+          You can mix and match — one property managed, one not. No lock-in contract. You can switch a listing to or from managed at any time by editing it.
+        </p>
+      </div>
+
       <form class="panel form-panel" id="listingForm">
         <div class="form-grid">
-          <label class="field span-2"><span>Listing title</span><input id="fTitle" required placeholder="e.g. Sunny garden room"></label>
-          <label class="field"><span>Street address</span><input id="fAddress" placeholder="14 Windermere Road"></label>
-          <label class="field"><span>Suburb</span><input id="fSuburb" required placeholder="Morningside"></label>
-          <label class="field"><span>City</span><input id="fCity" required placeholder="Durban"></label>
+          <label class="field span-2"><span>Listing title</span><input id="fTitle" required placeholder="e.g. Sunny garden room in Del Judor"></label>
+          <label class="field"><span>Street address</span><input id="fAddress" placeholder="14 Mandela Street"></label>
+          <label class="field"><span>Suburb</span><input id="fSuburb" required placeholder="Del Judor"></label>
+          <label class="field"><span>City</span><input id="fCity" required value="Witbank" placeholder="Witbank"></label>
           <label class="field"><span>Type</span>
             <select id="fType"><option>Room</option><option>Studio</option><option>Cottage</option><option>Flatlet</option></select></label>
           <label class="field"><span>Bedrooms</span><input type="number" id="fBedrooms" min="0" value="1"></label>
           <label class="field"><span>Bathrooms</span><input type="number" id="fBathrooms" min="0" value="0"></label>
-          <label class="field"><span>Your price per month (R)</span><input type="number" id="fPrice" min="0" step="50" required placeholder="800"></label>
-          <label class="field span-2"><span>Description</span><textarea id="fDescription" rows="4" placeholder="Tell tenants about the room…"></textarea></label>
+
+          <label class="field span-2 check-row">
+            <input type="checkbox" id="fManaged">
+            <span><strong>Let Room Stay manage this property</strong><br><small>We collect the rent and pay you monthly. No R50 fee for this property.</small></span>
+          </label>
+
+          <label class="field"><span id="priceLabel">Your price per month (R)</span><input type="number" id="fPrice" min="0" step="50" required placeholder="800"></label>
+          <label class="field hidden" id="managedPriceWrap"><span>Your monthly payout (R)</span><input type="number" id="fManagedPayout" min="0" step="50" placeholder="800"></label>
         </div>
+
         <div class="subhead"><h2>What's included?</h2><p>Shown as icons on the listing.</p></div>
         <div class="amenity-picker" id="amenityPicker"></div>
+
         <div class="subhead"><h2>Photos</h2><p>Add up to 6 photos.</p></div>
         <div class="upload-zone" id="uploadZone" role="button" tabindex="0">
           <span class="upload-ico" id="uploadIco"></span>
@@ -88,6 +125,7 @@
           <input type="file" id="fImages" accept="image/*" multiple hidden>
         </div>
         <div class="preview-grid" id="previewGrid"></div>
+
         <div class="form-actions">
           <button class="btn btn-primary" type="submit" id="submitBtn">Submit for review</button>
           <button class="btn btn-ghost" type="button" id="cancelBtn">Cancel</button>
@@ -98,6 +136,6 @@
 </div>
 
 <div class="toast-stack" id="toastStack"></div>
-<script src="dashboard.js?v=7"></script>
+<script src="dashboard.js?v=11"></script>
 </body>
 </html>
