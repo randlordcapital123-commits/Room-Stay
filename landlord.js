@@ -24,7 +24,7 @@
       '1pZ0JnP06gfyVGj6CHXWREo3rqsu7HmLixCCxgrk'
     );
     Parse.serverURL = 'https://parseapi.back4app.com/';
-    console.log('[Landlord] Parse initialized. URL:', Parse.serverURL);
+    console.log('[Landlord] Parse initialized.');
 
     var BASIC_SLOTS = 2;
     var BASIC_MONTHLY_FEE = 50;
@@ -109,17 +109,11 @@
       return pf.url();
     }
 
-    var state = {
-      user: null,
-      properties: [],
-      pendingImages: [],
-      editingId: null
-    };
+    var state = { user: null, properties: [], pendingImages: [], editingId: null };
 
     /* ---------- LOGIN ---------- */
     var loginForm = document.getElementById('loginForm');
     if (loginForm) {
-      console.log('[Landlord] Login form found, wiring submit handler');
       loginForm.addEventListener('submit', async function (e) {
         e.preventDefault();
         var errEl = document.getElementById('loginError');
@@ -135,17 +129,13 @@
         var phone = phoneEl ? phoneEl.value.trim() : '';
         var password = passEl ? passEl.value : '';
 
-        console.log('[Landlord] Submit. Email:', email, 'Password length:', password.length);
-
         if (!name) { if (errEl) errEl.textContent = 'Please enter your full name.'; return; }
         if (!email || email.indexOf('@') === -1) { if (errEl) errEl.textContent = 'Please enter a valid email.'; return; }
         if (!password || password.length < 8) { if (errEl) errEl.textContent = 'Password must be at least 8 characters.'; return; }
 
-        /* Try login first */
         try {
-          console.log('[Landlord] Attempting login…');
           var loggedIn = await Parse.User.logIn(email, password);
-          console.log('[Landlord] Login OK. User:', loggedIn.id, 'isLandlord:', loggedIn.get('isLandlord'), 'isAdmin:', loggedIn.get('isAdmin'));
+          console.log('[Landlord] Login OK');
           state.user = loggedIn;
           showApp();
           toast('Welcome back, ' + (loggedIn.get('name') || 'landlord') + '.');
@@ -154,9 +144,7 @@
           console.warn('[Landlord] Login failed:', loginErr.code, loginErr.message);
         }
 
-        /* Try signup */
         try {
-          console.log('[Landlord] Attempting signup for:', email);
           var nu = new Parse.User();
           nu.set('username', email);
           nu.set('email', email);
@@ -168,7 +156,7 @@
           nu.set('plan', 'basic');
           nu.set('planFee', BASIC_MONTHLY_FEE);
           await nu.signUp();
-          console.log('[Landlord] Signup OK. User:', nu.id);
+          console.log('[Landlord] Signup OK');
           state.user = nu;
           showApp();
           toast('Account created. Welcome to Room Stay.');
@@ -176,18 +164,15 @@
           console.error('[Landlord] Signup failed:', signupErr.code, signupErr.message);
           if (errEl) {
             if (signupErr.code === 202) errEl.textContent = 'That email is already registered. Check your password, or use a different email.';
-            else if (signupErr.code === 203) errEl.textContent = 'That email is already in use. Try logging in instead.';
+            else if (signupErr.code === 203) errEl.textContent = 'That email is already in use.';
             else if (signupErr.code === 125) errEl.textContent = 'That email address is not valid.';
-            else if (signupErr.code === 119) errEl.textContent = 'Signups are currently disabled on this site. Contact the administrator.';
-            else errEl.textContent = 'Could not create account: ' + (signupErr.message || 'unknown error') + '. Try a different email.';
+            else if (signupErr.code === 119) errEl.textContent = 'Signups are disabled on this site. Contact the administrator.';
+            else errEl.textContent = 'Could not create account: ' + (signupErr.message || 'unknown error');
           }
         }
       });
-    } else {
-      console.warn('[Landlord] No #loginForm found on this page.');
     }
 
-    /* ---------- SIGN OUT ---------- */
     var signOutBtn = document.getElementById('signOutBtn');
     if (signOutBtn) {
       signOutBtn.addEventListener('click', async function () {
@@ -196,14 +181,10 @@
       });
     }
 
-    /* ---------- AUTO LOGIN ---------- */
     var existing = Parse.User.current();
     if (existing) {
-      console.log('[Landlord] Existing session found, entering app');
       state.user = existing;
       showApp();
-    } else {
-      console.log('[Landlord] No session — showing login.');
     }
 
     /* ---------- APP ---------- */
@@ -263,6 +244,7 @@
         q.equalTo('owner', state.user);
         q.descending('createdAt');
         state.properties = await q.find();
+        console.log('[Landlord] Loaded', state.properties.length, 'properties');
       } catch (err) {
         console.error('[Landlord] loadMyProperties failed:', err);
         state.properties = [];
@@ -343,13 +325,12 @@
     if (newListingBtn) {
       newListingBtn.addEventListener('click', function () {
         if (countSlotsUsed() >= BASIC_SLOTS) {
-          toast('Your Basic plan allows 2 rooms. Delete one or move another to Property Management (managed rooms are free).');
+          toast('Your Basic plan allows 2 rooms. Delete one or move another to Property Management.');
           return;
         }
         showForm(null);
       });
     }
-
     var emptyAddBtn = document.getElementById('emptyAddBtn');
     if (emptyAddBtn) emptyAddBtn.addEventListener('click', function () { showForm(null); });
     var backBtn = document.getElementById('backToListings');
@@ -414,16 +395,13 @@
         e.preventDefault();
         console.log('[Landlord] ============ SUBMIT STARTED ============');
 
-        /* Read every field individually, log each one */
         var managedChk = document.getElementById('fManaged');
         var isManaged = managedChk ? !!managedChk.checked : false;
-        console.log('[Landlord] isManaged:', isManaged);
 
         var priceEl = isManaged ? document.getElementById('fManagedPayout') : document.getElementById('fPrice');
-        console.log('[Landlord] priceEl found:', !!priceEl);
         var priceStr = priceEl ? String(priceEl.value || '').trim() : '';
         var price = Number(priceStr);
-        console.log('[Landlord] priceStr:', priceStr, 'price:', price);
+        console.log('[Landlord] price:', price, 'isManaged:', isManaged);
         if (!priceStr || !isFinite(price) || price <= 0) {
           toast('Please enter a valid monthly amount.');
           return;
@@ -437,18 +415,16 @@
         var bedrooms = Number(getVal('fBedrooms')) || 0;
         var bathrooms = Number(getVal('fBathrooms')) || 0;
         var description = getVal('fDescription');
-        console.log('[Landlord] title:', title, 'suburb:', suburb);
 
         if (!title) { toast('Please enter a listing title.'); return; }
         if (!suburb) { toast('Please enter a suburb.'); return; }
 
         if (!state.editingId && !isManaged && countSlotsUsed() >= BASIC_SLOTS) {
-          toast('You already have 2 rooms on the Basic plan. Delete one or move another to Property Management.');
+          toast('You already have 2 rooms on the Basic plan.');
           return;
         }
 
         var amenities = $$('.amenity-check:checked').map(function (c) { return c.value; });
-        console.log('[Landlord] amenities:', amenities.length, 'images:', state.pendingImages.length);
 
         try {
           var prop;
@@ -475,20 +451,22 @@
           prop.set('managed', isManaged);
           prop.set('status', 'pending');
 
+          /* PUBLIC read ACL — this makes the listing visible to
+             the landlord, the admin dashboard, and the public site.
+             Writes stay restricted to the owner and admin. */
           var acl = new Parse.ACL();
-          var uid = state.user.id;
-          acl.setReadAccess(uid, true);
-          acl.setWriteAccess(uid, true);
+          acl.setPublicReadAccess(true);
+          acl.setWriteAccess(state.user.id, true);
           prop.setACL(acl);
 
-          console.log('[Landlord] Saving property…');
+          console.log('[Landlord] Saving property with public read ACL…');
           await prop.save();
-          console.log('[Landlord] SAVE OK');
+          console.log('[Landlord] SAVE OK. Property id:', prop.id);
           toast(state.editingId ? 'Listing updated.' : 'Listing submitted for review.');
           await loadMyProperties();
           showListings();
         } catch (err) {
-          console.error('[Landlord] SAVE FAILED:', err);
+          console.error('[Landlord] SAVE FAILED:', err.code, err.message);
           var msg = (err && err.message) ? err.message : 'Unknown error';
           if (err && err.code === 119) msg = 'Permission denied. Go to Back4App → App Settings → Security & Keys and turn ON "Allow client class creation".';
           if (err && err.code === 209) msg = 'Session expired. Sign out and sign in again.';

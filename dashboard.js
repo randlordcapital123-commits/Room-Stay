@@ -163,7 +163,8 @@
         var aq = new Parse.Query('Agent'); agents = await aq.find();
         var eq = new Parse.Query('Enquiry'); eq.descending('createdAt'); enquiries = await eq.find();
         settingsCache = await fetchSettings();
-      } catch (err) { console.error(err); toast('Could not load data.'); }
+        console.log('[Admin] Loaded', properties.length, 'properties');
+      } catch (err) { console.error('[Admin] load failed:', err); toast('Could not load data.'); }
     }
 
     var loginForm = document.getElementById('loginForm');
@@ -378,12 +379,7 @@
             acl.setWriteAccess(Parse.User.current().id, true); p.setACL(acl);
             await p.save(); toast('Published at ' + money(price) + '.');
           } else if (action === 'unpublish') {
-            p.set('status', 'pending');
-            var acl2 = new Parse.ACL();
-            var owner2 = p.get('owner');
-            if (owner2) { acl2.setReadAccess(owner2.id, true); acl2.setWriteAccess(owner2.id, true); }
-            acl2.setReadAccess(Parse.User.current().id, true); acl2.setWriteAccess(Parse.User.current().id, true);
-            p.setACL(acl2); await p.save(); toast('Unpublished.');
+            p.set('status', 'pending'); await p.save(); toast('Unpublished.');
           } else if (action === 'reject') { p.set('status', 'rejected'); await p.save(); toast('Rejected.'); }
           else if (action === 'delete') { if (!confirm('Delete this listing permanently?')) return; await p.destroy(); toast('Deleted.'); }
           await loadEverything(); renderAll();
