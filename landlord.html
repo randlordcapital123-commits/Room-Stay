@@ -53,11 +53,7 @@
 
   <main class="wrap main">
     <section id="listingsView">
-      <header class="view-head">
-        <h1>My rooms</h1>
-        <p>Your listed rooms and their review status.</p>
-      </header>
-
+      <header class="view-head"><h1>My rooms</h1><p>Your listed rooms and their review status.</p></header>
       <div class="plan-card" id="planCard">
         <div>
           <h3>Basic plan</h3>
@@ -65,7 +61,6 @@
         </div>
         <span class="plan-slots" id="planSlots">0 / 2 used</span>
       </div>
-
       <div class="my-grid" id="myGrid"></div>
       <div class="empty hidden" id="myEmpty">
         <h3>You have no listings yet</h3>
@@ -83,15 +78,9 @@
 
       <div class="info-panel">
         <h3>How property management works</h3>
-        <p>
-          By default, you list a room, set your price, and Room Stay adds a small commission on top. <strong>You collect the rent yourself.</strong> Your R50/month plan fee keeps your listing active.
-        </p>
-        <p>
-          If you tick <strong>"Let Room Stay manage this property"</strong>, we take over the collection: the tenant pays Room Stay, and we pay you your full rental amount monthly. In return, <strong>we charge you no R50 monthly fee for that property</strong>. We earn a 15% management fee on top of your rent, paid by the tenant.
-        </p>
-        <p>
-          You can mix and match — one property managed, one not. No lock-in contract. You can switch a listing to or from managed at any time by editing it.
-        </p>
+        <p>By default, you list a room, set your price, and Room Stay adds a small commission on top. <strong>You collect the rent yourself.</strong> Your R50/month plan fee keeps your listing active.</p>
+        <p>If you tick <strong>"Let Room Stay manage this property"</strong>, we take over the collection: the tenant pays Room Stay, and we pay you your full rental amount monthly. In return, <strong>we charge you no R50 monthly fee for that property</strong>. We earn a 15% management fee on top of your rent, paid by the tenant.</p>
+        <p>You can mix and match — one property managed, one not. No lock-in contract. You can switch a listing to or from managed at any time by editing it.</p>
       </div>
 
       <form class="panel form-panel" id="listingForm">
@@ -110,7 +99,7 @@
             <span><strong>Let Room Stay manage this property</strong><br><small>We collect the rent and pay you monthly. No R50 fee for this property.</small></span>
           </label>
 
-          <label class="field"><span id="priceLabel">Your price per month (R)</span><input type="number" id="fPrice" min="0" step="50" required placeholder="800"></label>
+          <label class="field"><span>Your price per month (R)</span><input type="number" id="fPrice" min="0" step="50" required placeholder="800"></label>
           <label class="field hidden" id="managedPriceWrap"><span>Your monthly payout (R)</span><input type="number" id="fManagedPayout" min="0" step="50" placeholder="800"></label>
         </div>
 
@@ -136,6 +125,6 @@
 </div>
 
 <div class="toast-stack" id="toastStack"></div>
-<script src="dashboard.js?v=11"></script>
+<script src="landlord.js?v=13"></script>
 </body>
 </html>
