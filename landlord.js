@@ -8,7 +8,7 @@
     if (window.Parse) return Promise.resolve();
     return new Promise(function (resolve, reject) {
       var s = document.createElement('script');
-      s.src = 'https://unpkg.com/parse/dist/parse.min.js';
+      s.src = 'https://unpkg.com/parse@5.3.0/dist/parse.min.js';
       s.async = true;
       s.onload = resolve;
       s.onerror = function () { reject(new Error('Could not load Parse SDK')); };
@@ -67,6 +67,14 @@
         return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
       });
     }
+    function safeImageUrl(value) {
+      var raw = String(value == null ? '' : value).trim();
+      if (/^https:\/\//i.test(raw) || /^http:\/\//i.test(raw)) return raw;
+      return '';
+    }
+    function imageAttr(value, fallback) {
+      return esc(safeImageUrl(value) || fallback || '');
+    }
     function money(a) {
       var n = Math.round(Number(a) || 0);
       return 'R' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -102,7 +110,10 @@
       return [];
     }
     async function uploadFile(file, prefix) {
-      var ext = (file.name || 'file').split('.').pop().toLowerCase() || 'jpg';
+      var allowed = { 'image/jpeg':'jpg', 'image/png':'png', 'image/webp':'webp' };
+      if (!file || !allowed[file.type]) throw new Error('Only JPG, PNG or WebP images are allowed.');
+      if (file.size > 5 * 1024 * 1024) throw new Error('Each image must be 5 MB or smaller.');
+      var ext = allowed[file.type];
       var name = prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) + '.' + ext;
       var pf = new Parse.File(name, file);
       await pf.save();
@@ -374,7 +385,7 @@
       var grid = document.getElementById('previewGrid');
       if (!grid) return;
       grid.innerHTML = state.pendingImages.map(function (src, i) {
-        return '<div class="preview"><img src="' + src + '" alt="">' +
+        return '<div class="preview"><img src="' + imageAttr(src, placeholder('room', 'Room')) + '" alt="">' +
           '<button type="button" data-remove="' + i + '">×</button></div>';
       }).join('');
     }
@@ -419,8 +430,11 @@
         if (!title) { toast('Please enter a listing title.'); return; }
         if (!suburb) { toast('Please enter a suburb.'); return; }
 
-        if (!state.editingId && !isManaged && countSlotsUsed() >= BASIC_SLOTS) {
-          toast('You already have 2 rooms on the Basic plan.');
+        var otherUnmanagedSlots = state.properties.filter(function (existing) {
+          return !existing.get('managed') && existing.id !== state.editingId;
+        }).length;
+        if (!isManaged && otherUnmanagedSlots >= BASIC_SLOTS) {
+          toast('Your Basic plan allows 2 unmanaged room slots.');
           return;
         }
 
@@ -508,7 +522,7 @@
         actions += '<button class="btn btn-ghost" data-edit="' + esc(p.id) + '">Edit</button>';
         actions += '<button class="btn btn-danger" data-del="' + esc(p.id) + '">Delete</button>';
         return '<article class="my-card">' +
-          '<div class="my-media"><img src="' + img + '" alt="">' +
+          '<div class="my-media"><img src="' + imageAttr(img, placeholder(p.id, 'Room')) + '" alt="">' +
             '<span class="badge ' + esc(status) + '">' + esc(statusText) + (isManaged ? ' · Managed' : '') + '</span></div>' +
           '<div class="my-body">' +
             '<h3>' + esc(p.get('title')) + '</h3>' +
@@ -550,5 +564,7 @@
 
   loadParse().then(boot).catch(function (err) {
     console.error('Room Stay: failed to load Parse', err);
+    var error = document.getElementById('loginError');
+    if (error) error.textContent = 'The service could not connect. Refresh the page or try again later.';
   });
 })();

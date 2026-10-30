@@ -8,7 +8,7 @@
     if (window.Parse) return Promise.resolve();
     return new Promise(function (resolve, reject) {
       var s = document.createElement('script');
-      s.src = 'https://unpkg.com/parse/dist/parse.min.js';
+      s.src = 'https://unpkg.com/parse@5.3.0/dist/parse.min.js';
       s.async = true;
       s.onload = resolve;
       s.onerror = function () { reject(new Error('Could not load Parse SDK')); };
@@ -51,6 +51,14 @@
       return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
         return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
       });
+    }
+    function safeImageUrl(value) {
+      var raw = String(value == null ? '' : value).trim();
+      if (/^https:\/\//i.test(raw) || /^http:\/\//i.test(raw)) return raw;
+      return '';
+    }
+    function imageAttr(value, fallback) {
+      return esc(safeImageUrl(value) || fallback || '');
     }
     function money(a) {
       var n = Math.round(Number(a) || 0);
@@ -97,7 +105,10 @@
       return [];
     }
     async function uploadFile(file, prefix) {
-      var ext = (file.name || 'file').split('.').pop().toLowerCase() || 'jpg';
+      var allowed = { 'image/jpeg':'jpg', 'image/png':'png', 'image/webp':'webp' };
+      if (!file || !allowed[file.type]) throw new Error('Only JPG, PNG or WebP images are allowed.');
+      if (file.size > 5 * 1024 * 1024) throw new Error('Image must be 5 MB or smaller.');
+      var ext = allowed[file.type];
       var name = prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) + '.' + ext;
       var pf = new Parse.File(name, file);
       await pf.save();
@@ -144,7 +155,7 @@
     });
 
     var currentUser = Parse.User.current();
-    if (currentUser && currentUser.get('isAdmin')) {
+    if (currentUser && currentUser.get('isAdmin') === true) {
       showApp();
     }
 
@@ -251,7 +262,7 @@
         stat('clock', 'Awaiting approval', pending.length, 'needs your review') +
         stat('mail', 'New requests', newEnq.length, 'from the public site') +
         stat('check', 'Live on site', approved.length, 'visible to the public') +
-        stat('money', 'Commission (live)', money(earned), 'per month when rented') +
+        stat('money', 'Commission (live)', money(earned), 'potential monthly margin if all are rented') +
         stat('users', 'Managed properties', managed.length, 'on Property Management');
 
       var pb = document.getElementById('pendingBadge'); if (pb) pb.textContent = pending.length;
@@ -263,7 +274,7 @@
       list.innerHTML = pending.slice(0, 5).map(function (p) {
         var imgs = parseArray(p.get('images'));
         var img = imgs[0] || placeholder(p.id, 'Room');
-        return '<div class="pending-item"><img src="' + img + '" alt="">' +
+        return '<div class="pending-item"><img src="' + imageAttr(img, placeholder(p.id, 'Room')) + '" alt="">' +
           '<div><strong>' + esc(p.get('title')) + '</strong>' +
           '<small>' + esc(p.get('suburb') + ', ' + p.get('city')) + ' · ' + money(p.get('landlordPrice')) + '</small></div>' +
           '<button class="btn btn-ghost btn-sm" data-review="' + esc(p.id) + '">Review</button></div>';
@@ -279,7 +290,7 @@
     }
 
     function renderProperties() {
-      var defaultComm = settingsCache ? Number(settingsCache.get('defaultCommission')) || 400 : 400;
+      var defaultComm = settingsCache ? (settingsCache.get('defaultCommission') == null ? 400 : Number(settingsCache.get('defaultCommission'))) : 400;
       var list = properties.slice();
       if (activeStatus !== 'all') list = list.filter(function (p) { return p.get('status') === activeStatus; });
       list.sort(function (a, b) {
@@ -297,7 +308,8 @@
         var agentRef = p.get('agent');
         var base = Number(p.get('landlordPrice')) || 0;
         var isManaged = !!p.get('managed');
-        var suggested = Number(p.get('publicPrice')) || (base + defaultComm);
+        var savedPublicPrice = p.get('publicPrice');
+        var suggested = savedPublicPrice == null ? (base + defaultComm) : Number(savedPublicPrice);
         var comm = suggested - base;
         var status = p.get('status');
         var enqCount = enquiries.filter(function (e) { var r = e.get('property'); return r && r.id === p.id; }).length;
@@ -313,7 +325,7 @@
         if (status !== 'rejected') actions += '<button class="btn btn-ghost btn-sm" data-action="reject" data-id="' + esc(p.id) + '">Reject</button>';
 
         return '<div class="row">' +
-          '<img class="row-thumb" src="' + img + '" alt="">' +
+          '<img class="row-thumb" src="' + imageAttr(img, placeholder(p.id, 'Room')) + '" alt="">' +
           '<div class="row-main">' +
             '<h4>' + esc(p.get('title')) + ' ' + (isManaged ? '<span style="background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;letter-spacing:.02em">MANAGED</span>' : '') + '</h4>' +
             '<p class="row-loc">' + icon('pin') + esc(p.get('suburb') + ', ' + p.get('city')) + '</p>' +
@@ -404,7 +416,7 @@
         var html = '<button class="tab' + (activeEnqAgent === 'all' ? ' active' : '') + '" data-agent="all">All</button>';
         agents.forEach(function (a) {
           var n = enquiries.filter(function (e) { var r = e.get('agent'); return r && r.id === a.id && e.get('status') === 'new'; }).length;
-          html += '<button class="tab' + (activeEnqAgent === a.id ? ' active' : '') + '" data-agent="' + esc(a.id) + '">' + esc(a.get('name').split(' ')[0]) + (n > 0 ? ' (' + n + ')' : '') + '</button>';
+          html += '<button class="tab' + (activeEnqAgent === a.id ? ' active' : '') + '" data-agent="' + esc(a.id) + '">' + esc(String(a.get('name') || 'Agent').trim().split(/\\s+/)[0]) + (n > 0 ? ' (' + n + ')' : '') + '</button>';
         });
         enqTabs.innerHTML = html;
       }
@@ -438,7 +450,7 @@
         actions += '<button class="icon-btn" data-enq-act="delete" data-id="' + esc(enq.id) + '" title="Delete">' + icon('trash') + '</button>';
 
         return '<div class="row">' +
-          '<img class="row-thumb" src="' + img + '" alt="">' +
+          '<img class="row-thumb" src="' + imageAttr(img, placeholder(p.id, 'Room')) + '" alt="">' +
           '<div class="row-main">' +
             '<h4>' + esc(enq.get('propertyTitle') || (prop && prop.get('title')) || 'Room') + '</h4>' +
             '<p class="row-loc">' + icon('mail') + esc(enq.get('tenantName')) + ' · ' + esc(enq.get('tenantPhone')) +
@@ -541,7 +553,7 @@
     function refreshHeroPreview() {
       if (!heroPreview || !heroPreviewWrap) return;
       var url = settingsCache ? settingsCache.get('heroImage') : null;
-      if (url) { heroPreview.src = url; heroPreviewWrap.classList.remove('hidden'); }
+      if (safeImageUrl(url)) { heroPreview.src = safeImageUrl(url); heroPreviewWrap.classList.remove('hidden'); }
       else { heroPreview.removeAttribute('src'); heroPreviewWrap.classList.add('hidden'); }
     }
     if (heroInput && heroZone) {
@@ -570,8 +582,8 @@
         if (!settingsCache) return;
         try {
           settingsCache.set('siteName', ((document.getElementById('setSiteName') || {}).value || 'Room Stay').trim());
-          settingsCache.set('defaultCommission', Number((document.getElementById('setCommission') || {}).value) || 400);
-          settingsCache.set('managementFee', Number((document.getElementById('setMgmtFee') || {}).value) || 15);
+          settingsCache.set('defaultCommission', Number((document.getElementById('setCommission') || {}).value));
+          settingsCache.set('managementFee', Number((document.getElementById('setMgmtFee') || {}).value));
           await settingsCache.save(); toast('Settings saved.'); await loadEverything(); renderAll();
         } catch (err) { toast('Could not save settings.'); }
       });

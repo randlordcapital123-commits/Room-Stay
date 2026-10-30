@@ -6,7 +6,7 @@
     if (window.Parse) return Promise.resolve();
     return new Promise(function (resolve, reject) {
       var s = document.createElement('script');
-      s.src = 'https://unpkg.com/parse/dist/parse.min.js';
+      s.src = 'https://unpkg.com/parse@5.3.0/dist/parse.min.js';
       s.async = true;
       s.onload = resolve;
       s.onerror = function () { reject(new Error('Could not load Parse SDK')); };
@@ -70,6 +70,14 @@
         return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
       });
     }
+    function safeImageUrl(value) {
+      var raw = String(value == null ? '' : value).trim();
+      if (/^https:\/\//i.test(raw) || /^http:\/\//i.test(raw)) return raw;
+      return '';
+    }
+    function imageAttr(value, fallback) {
+      return escapeHtml(safeImageUrl(value) || fallback || '');
+    }
     function money(a) {
       var n = Math.round(Number(a) || 0);
       return 'R' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -110,7 +118,7 @@
       q.equalTo('status', 'approved');
       q.descending('createdAt');
       q.limit(200);
-      try { return await q.find(); } catch (e) { console.error(e); return []; }
+      try { return await q.find(); } catch (e) { console.error(e); throw e; }
     }
     async function fetchById(id) { try { return await new Parse.Query('Property').get(id); } catch (e) { return null; } }
     async function fetchAgent(id) { if (!id) return null; try { return await new Parse.Query('Agent').get(id); } catch (e) { return null; } }
@@ -160,7 +168,7 @@
       var settings = await fetchSettings();
       if (settings && settings.get('heroImage')) {
         var hv = document.getElementById('heroVisual');
-        if (hv) { hv.innerHTML = ''; var img = document.createElement('img'); img.src = settings.get('heroImage'); img.alt = 'Room Stay hero'; hv.appendChild(img); }
+        if (hv && safeImageUrl(settings.get('heroImage'))) { hv.innerHTML = ''; var img = document.createElement('img'); img.src = safeImageUrl(settings.get('heroImage')); img.alt = 'Room Stay hero'; hv.appendChild(img); }
       }
 
       $('#amenityChips').innerHTML = AMENITIES.map(function (a) {
@@ -172,19 +180,19 @@
       var all = results.map(toPlain);
 
       var agentCache = {};
-      async function getAgent(id) {
-        if (!id) return null;
-        if (agentCache[id] !== undefined) return agentCache[id];
-        var a = await fetchAgent(id);
-        agentCache[id] = a ? { name: a.get('name'), phone: a.get('phone'), email: a.get('email') } : null;
-        return agentCache[id];
-      }
+      try {
+        var publicAgents = await new Parse.Query('Agent').find();
+        publicAgents.forEach(function (a) {
+          agentCache[a.id] = { name: a.get('name') || '', phone: a.get('phone') || '', email: a.get('email') || '' };
+        });
+      } catch (agentError) { console.warn('Agent details unavailable.'); }
+      async function getAgent(id) { return id && agentCache[id] ? agentCache[id] : null; }
 
       function matches(p) {
         if (state.type !== 'all' && p.type !== state.type) return false;
         if (state.maxPrice && Number(p.publicPrice) > state.maxPrice) return false;
         if (state.q) {
-          var hay = [p.title, p.suburb, p.city, p.address, p.description].join(' ').toLowerCase();
+          var hay = [p.title, p.suburb, p.city, p.description].join(' ').toLowerCase();
           if (hay.indexOf(state.q) === -1) return false;
         }
         for (var i = 0; i < state.amenities.length; i++) {
@@ -210,7 +218,7 @@
           var iconsHtml = (p.amenities || []).slice(0, 5).map(function (k) {
             return '<span class="amenity" title="' + escapeHtml(amenityLabel(k)) + '">' + icon(k) + '</span>';
           }).join('');
-          var cover = (p.images && p.images[0]) || placeholder(p.id, 'Room');
+          var cover = imageAttr((p.images && p.images[0]) || '', placeholder(p.id, 'Room'));
           cards.push('<article class="card" data-id="' + escapeHtml(p.id) + '" tabindex="0">' +
             '<div class="card-media"><img src="' + cover + '" alt="' + escapeHtml(p.title) + '" loading="lazy">' +
               '<span class="price-pill">' + money(p.publicPrice) + '<small>/month</small></span></div>' +
@@ -219,9 +227,10 @@
               '<p class="card-loc">' + icon('pin') + escapeHtml(p.suburb + ', ' + p.city) + '</p>' +
               '<div class="amenities">' + iconsHtml + '</div>' +
               '<div class="card-foot"><span>' + escapeHtml(p.type) + ' · ' + p.bedrooms + ' bed</span>' +
-              '<span>' + (agent ? escapeHtml(agent.name.split(' ')[0]) : 'Room Stay') + '</span></div>' +
+              '<span>' + (agent ? escapeHtml((agent.name || 'Agent').trim().split(/\\s+/)[0]) : 'Room Stay') + '</span></div>' +
             '</div></article>');
         }
+        if (thisRender !== renderVersion) return;
         grid.innerHTML = cards.join('');
         $('#resultCount').textContent = filtered.length + (filtered.length === 1 ? ' room' : ' rooms');
         if (!filtered.length) { grid.classList.add('hidden'); $('#emptyState').classList.remove('hidden'); }
@@ -247,7 +256,8 @@
         if (idx === -1) state.amenities.push(k); else state.amenities.splice(idx, 1);
         c.classList.toggle('active'); render();
       });
-      $('#resetFilters').addEventListener('click', function () {
+      var resetFilters = $('#resetFilters');
+      if (resetFilters) resetFilters.addEventListener('click', function () {
         state.q = ''; state.type = 'all'; state.maxPrice = 0; state.sort = 'newest'; state.amenities = [];
         $('#searchInput').value = ''; $('#typeSelect').value = 'all'; $('#priceSelect').value = '0'; $('#sortSelect').value = 'newest';
         $$('#amenityChips .chip').forEach(function (c) { c.classList.remove('active'); });
@@ -288,7 +298,7 @@
       }).join('');
       var thumbs = images.map(function (src, i) {
         return '<div class="thumb' + (i === 0 ? ' active' : '') + '" data-index="' + i + '">' +
-               '<img src="' + src + '" alt="Photo ' + (i + 1) + '"></div>';
+               '<img src="' + imageAttr(src, placeholder(p.id, 'Room')) + '" alt="Photo ' + (i + 1) + '"></div>';
       }).join('');
 
       var agentBlock = agent
@@ -311,10 +321,10 @@
       }
 
       root.innerHTML = '<div class="detail-grid"><div class="detail-main">' +
-        '<div class="gallery-main"><img id="mainImage" src="' + images[0] + '" alt="' + escapeHtml(p.title) + '"></div>' +
+        '<div class="gallery-main"><img id="mainImage" src="' + imageAttr(images[0], placeholder(p.id, 'Room')) + '" alt="' + escapeHtml(p.title) + '"></div>' +
         '<div class="gallery-thumbs" id="thumbs">' + thumbs + '</div>' +
         '<h1 class="detail-title">' + escapeHtml(p.title) + '</h1>' +
-        '<p class="detail-loc">' + icon('pin') + escapeHtml((p.address ? p.address + ', ' : '') + p.suburb + ', ' + p.city) + '</p>' +
+        '<p class="detail-loc">' + icon('pin') + escapeHtml(p.suburb + ', ' + p.city) + '</p>' +
         '<div class="meta-row">' +
           '<span class="meta-chip">' + icon('home') + escapeHtml(p.type) + '</span>' +
           '<span class="meta-chip">' + icon('bed') + p.bedrooms + ' bedroom' + (p.bedrooms > 1 ? 's' : '') + '</span>' +
@@ -336,7 +346,7 @@
       $('#thumbs').addEventListener('click', function (e) {
         var t = e.target.closest('.thumb'); if (!t) return;
         var i = Number(t.dataset.index);
-        $('#mainImage').src = images[i];
+        $('#mainImage').src = safeImageUrl(images[i]) || placeholder(p.id, 'Room');
         $$('.thumb').forEach(function (x) { x.classList.toggle('active', x === t); });
       });
 
@@ -345,7 +355,7 @@
       var closeBtn = document.getElementById('closeBooking');
 
       function openModal() { if (!modal) return; modal.classList.remove('hidden'); document.body.style.overflow = 'hidden';
-        var m = document.getElementById('bookMoveIn'); if (m) m.min = new Date().toISOString().split('T')[0]; }
+        var m = document.getElementById('bookMoveIn'); if (m) var now = new Date(); m.min = [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-'); }
       function closeModal() { if (!modal) return; modal.classList.add('hidden'); document.body.style.overflow = ''; }
 
       $('#bookBtn').addEventListener('click', openModal);
@@ -377,7 +387,7 @@
           });
           form.reset();
           closeModal();
-          var who = agent ? agent.name.split(' ')[0] : 'the Room Stay team';
+          var who = agent ? (agent.name || 'Agent').trim().split(/\\s+/)[0] : 'the Room Stay team';
           toast('Request sent to ' + who + '. They will call you shortly.');
         } catch (err) {
           console.error(err);

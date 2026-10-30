@@ -101,6 +101,7 @@
 
           <label class="field"><span>Your price per month (R)</span><input type="number" id="fPrice" min="0" step="50" required placeholder="800"></label>
           <label class="field hidden" id="managedPriceWrap"><span>Your monthly payout (R)</span><input type="number" id="fManagedPayout" min="0" step="50" placeholder="800"></label>
+          <label class="field span-2"><span>Listing description</span><textarea id="fDescription" rows="4" maxlength="2000" placeholder="Describe the room, facilities, rules and what is nearby."></textarea></label>
         </div>
 
         <div class="subhead"><h2>What's included?</h2><p>Shown as icons on the listing.</p></div>
@@ -110,7 +111,7 @@
         <div class="upload-zone" id="uploadZone" role="button" tabindex="0">
           <span class="upload-ico" id="uploadIco"></span>
           <strong>Click to upload photos</strong>
-          <small>JPG or PNG</small>
+          <small>JPG or PNG, WebP · max 5 MB each</small>
           <input type="file" id="fImages" accept="image/*" multiple hidden>
         </div>
         <div class="preview-grid" id="previewGrid"></div>
