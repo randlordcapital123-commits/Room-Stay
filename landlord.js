@@ -8,7 +8,7 @@
     if (window.Parse) return Promise.resolve();
     return new Promise(function (resolve, reject) {
       var s = document.createElement('script');
-      s.src = 'https://unpkg.com/parse@5.3.0/dist/parse.min.js';
+      s.src = 'https://unpkg.com/parse/dist/parse.min.js';
       s.async = true;
       s.onload = resolve;
       s.onerror = function () { reject(new Error('Could not load Parse SDK')); };
@@ -67,14 +67,6 @@
         return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
       });
     }
-    function safeImageUrl(value) {
-      var raw = String(value == null ? '' : value).trim();
-      if (/^https:\/\//i.test(raw) || /^http:\/\//i.test(raw)) return raw;
-      return '';
-    }
-    function imageAttr(value, fallback) {
-      return esc(safeImageUrl(value) || fallback || '');
-    }
     function money(a) {
       var n = Math.round(Number(a) || 0);
       return 'R' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -104,16 +96,16 @@
         setTimeout(function () { node.remove(); }, 260);
       }, 3200);
     }
+    function safeImageUrl(v, seed) { var u = String(v || '').trim(); return (/^https?:\/\//i.test(u) ? u : placeholder(seed || 'room', 'Room')); }
     function parseArray(v) {
       if (Array.isArray(v)) return v;
       if (typeof v === 'string') { try { var r = JSON.parse(v); return Array.isArray(r) ? r : []; } catch (e) { return []; } }
       return [];
     }
     async function uploadFile(file, prefix) {
-      var allowed = { 'image/jpeg':'jpg', 'image/png':'png', 'image/webp':'webp' };
-      if (!file || !allowed[file.type]) throw new Error('Only JPG, PNG or WebP images are allowed.');
-      if (file.size > 5 * 1024 * 1024) throw new Error('Each image must be 5 MB or smaller.');
-      var ext = allowed[file.type];
+      if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('Only JPG, PNG and WebP images are allowed.');
+      if (file.size > 2 * 1024 * 1024) throw new Error('Each image must be 2 MB or smaller.');
+      var ext = (file.name || 'file').split('.').pop().toLowerCase() || 'jpg';
       var name = prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) + '.' + ext;
       var pf = new Parse.File(name, file);
       await pf.save();
@@ -140,20 +132,26 @@
         var phone = phoneEl ? phoneEl.value.trim() : '';
         var password = passEl ? passEl.value : '';
 
-        if (!name) { if (errEl) errEl.textContent = 'Please enter your full name.'; return; }
-        if (!email || email.indexOf('@') === -1) { if (errEl) errEl.textContent = 'Please enter a valid email.'; return; }
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (errEl) errEl.textContent = 'Please enter a valid email.'; return; }
         if (!password || password.length < 8) { if (errEl) errEl.textContent = 'Password must be at least 8 characters.'; return; }
+        var action = e.submitter && e.submitter.value ? e.submitter.value : 'login';
 
-        try {
-          var loggedIn = await Parse.User.logIn(email, password);
-          console.log('[Landlord] Login OK');
-          state.user = loggedIn;
-          showApp();
-          toast('Welcome back, ' + (loggedIn.get('name') || 'landlord') + '.');
+        if (action === 'login') {
+          try {
+            var loggedIn = await Parse.User.logIn(email, password);
+            var roleCheck;
+            try { roleCheck = await Parse.Cloud.run('checkUserRole', { roleName: 'Landlord' }); }
+            catch (roleErr) { await Parse.Cloud.run('ensureLandlordRole'); roleCheck = await Parse.Cloud.run('checkUserRole', { roleName: 'Landlord' }); }
+            if (!roleCheck || !roleCheck.allowed) { await Parse.User.logOut(); throw new Error('This account is not registered as a landlord.'); }
+            state.user = loggedIn;
+            showApp();
+            toast('Welcome back, ' + (loggedIn.get('name') || 'landlord') + '.');
+          } catch (loginErr) {
+            if (errEl) errEl.textContent = loginErr.message || (loginErr.code === 101 ? 'Incorrect email or password.' : 'Unable to sign in. Please try again.');
+          }
           return;
-        } catch (loginErr) {
-          console.warn('[Landlord] Login failed:', loginErr.code, loginErr.message);
         }
+        if (!name) { if (errEl) errEl.textContent = 'Please enter your full name to create an account.'; return; }
 
         try {
           var nu = new Parse.User();
@@ -167,6 +165,7 @@
           nu.set('plan', 'basic');
           nu.set('planFee', BASIC_MONTHLY_FEE);
           await nu.signUp();
+          await Parse.Cloud.run('ensureLandlordRole');
           console.log('[Landlord] Signup OK');
           state.user = nu;
           showApp();
@@ -184,6 +183,16 @@
       });
     }
 
+    var forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+    if (forgotPasswordBtn) forgotPasswordBtn.addEventListener('click', async function () {
+      var email = (document.getElementById('loginEmail') || {}).value || '';
+      email = email.trim().toLowerCase();
+      var errEl = document.getElementById('loginError');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (errEl) errEl.textContent = 'Enter your account email first.'; return; }
+      try { await Parse.User.requestPasswordReset(email); if (errEl) errEl.textContent = 'If the account exists, a password reset email has been sent.'; }
+      catch (err) { if (errEl) errEl.textContent = 'Could not send reset email. Check Back4App email settings.'; }
+    });
+
     var signOutBtn = document.getElementById('signOutBtn');
     if (signOutBtn) {
       signOutBtn.addEventListener('click', async function () {
@@ -194,8 +203,9 @@
 
     var existing = Parse.User.current();
     if (existing) {
-      state.user = existing;
-      showApp();
+      Parse.Cloud.run('checkUserRole', { roleName: 'Landlord' }).then(function (r) {
+        if (r && r.allowed) { state.user = existing; showApp(); } else { Parse.User.logOut(); }
+      }).catch(function () { Parse.User.logOut(); });
     }
 
     /* ---------- APP ---------- */
@@ -385,7 +395,7 @@
       var grid = document.getElementById('previewGrid');
       if (!grid) return;
       grid.innerHTML = state.pendingImages.map(function (src, i) {
-        return '<div class="preview"><img src="' + imageAttr(src, placeholder('room', 'Room')) + '" alt="">' +
+        return '<div class="preview"><img src="' + esc(safeImageUrl(src, 'preview')) + '" alt="">' +
           '<button type="button" data-remove="' + i + '">×</button></div>';
       }).join('');
     }
@@ -430,11 +440,8 @@
         if (!title) { toast('Please enter a listing title.'); return; }
         if (!suburb) { toast('Please enter a suburb.'); return; }
 
-        var otherUnmanagedSlots = state.properties.filter(function (existing) {
-          return !existing.get('managed') && existing.id !== state.editingId;
-        }).length;
-        if (!isManaged && otherUnmanagedSlots >= BASIC_SLOTS) {
-          toast('Your Basic plan allows 2 unmanaged room slots.');
+        if (!state.editingId && !isManaged && countSlotsUsed() >= BASIC_SLOTS) {
+          toast('You already have 2 rooms on the Basic plan.');
           return;
         }
 
@@ -465,15 +472,14 @@
           prop.set('managed', isManaged);
           prop.set('status', 'pending');
 
-          /* PUBLIC read ACL — this makes the listing visible to
-             the landlord, the admin dashboard, and the public site.
-             Writes stay restricted to the owner and admin. */
+          /* Private owner ACL. Public listings are exposed only through the
+             getApprovedProperties Cloud Code function after admin approval. */
           var acl = new Parse.ACL();
-          acl.setPublicReadAccess(true);
+          acl.setReadAccess(state.user.id, true);
           acl.setWriteAccess(state.user.id, true);
           prop.setACL(acl);
 
-          console.log('[Landlord] Saving property with public read ACL…');
+          console.log('[Landlord] Saving private property listing…');
           await prop.save();
           console.log('[Landlord] SAVE OK. Property id:', prop.id);
           toast(state.editingId ? 'Listing updated.' : 'Listing submitted for review.');
@@ -482,7 +488,7 @@
         } catch (err) {
           console.error('[Landlord] SAVE FAILED:', err.code, err.message);
           var msg = (err && err.message) ? err.message : 'Unknown error';
-          if (err && err.code === 119) msg = 'Permission denied. Go to Back4App → App Settings → Security & Keys and turn ON "Allow client class creation".';
+          if (err && err.code === 119) msg = 'Back4App denied this operation. Check the Property class permissions and deploy the Room Stay Cloud Code security functions.';
           if (err && err.code === 209) msg = 'Session expired. Sign out and sign in again.';
           if (err && err.code === 100) msg = 'Not connected. Check your internet.';
           toast('Could not save listing: ' + msg);
@@ -522,7 +528,7 @@
         actions += '<button class="btn btn-ghost" data-edit="' + esc(p.id) + '">Edit</button>';
         actions += '<button class="btn btn-danger" data-del="' + esc(p.id) + '">Delete</button>';
         return '<article class="my-card">' +
-          '<div class="my-media"><img src="' + imageAttr(img, placeholder(p.id, 'Room')) + '" alt="">' +
+          '<div class="my-media"><img src="' + esc(safeImageUrl(img, p.id)) + '" alt="">' +
             '<span class="badge ' + esc(status) + '">' + esc(statusText) + (isManaged ? ' · Managed' : '') + '</span></div>' +
           '<div class="my-body">' +
             '<h3>' + esc(p.get('title')) + '</h3>' +
@@ -564,7 +570,5 @@
 
   loadParse().then(boot).catch(function (err) {
     console.error('Room Stay: failed to load Parse', err);
-    var error = document.getElementById('loginError');
-    if (error) error.textContent = 'The service could not connect. Refresh the page or try again later.';
   });
 })();

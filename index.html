@@ -61,7 +61,7 @@
     </div>
     <div class="hero-content">
       <h1>Rooms to rent in<br>Witbank and around.</h1>
-      <p class="hero-sub">Browse available rooms, compare prices and request a viewing in minutes.</p>
+      <p class="hero-sub">Verified landlords, real photos, honest prices. Book a viewing in minutes.</p>
     </div>
   </div>
   <div class="wrap">
@@ -100,7 +100,6 @@
     <h2 class="filter-title">Browse rooms</h2>
     <div class="filter-right">
       <span class="result-count" id="resultCount">—</span>
-      <button class="btn btn-ghost" id="resetFilters" type="button">Reset filters</button>
       <select id="sortSelect" class="mini-select">
         <option value="newest">Newest first</option>
         <option value="price-asc">Price: low to high</option>
@@ -109,9 +108,11 @@
     </div>
   </div>
   <div class="chip-row" id="amenityChips"></div>
+  <button type="button" class="btn btn-ghost" id="resetFilters">Reset filters</button>
 </section>
 
 <main class="wrap">
+  <p class="login-error" id="gridStatus" role="status" aria-live="polite"></p>
   <div class="grid" id="grid"></div>
   <div class="empty hidden" id="emptyState">
     <div class="empty-icon" id="emptyIcon"></div>
@@ -124,9 +125,9 @@
 <section class="how wrap" id="how">
   <h2>How Room Stay works</h2>
   <div class="how-grid">
-    <div class="how-card"><div class="how-ico" id="howIco1"></div><h3>Search &amp; filter</h3><p>Filter by price, suburb and the things that matter.</p></div>
-    <div class="how-card"><div class="how-ico" id="howIco2"></div><h3>Real photos</h3><p>Listings are reviewed before they go live.</p></div>
-    <div class="how-card"><div class="how-ico" id="howIco3"></div><h3>Talk to an agent</h3><p>Send a viewing request and the assigned contact can follow up.</p></div>
+    <div class="how-card"><div class="how-ico" id="howIco1"></div><h3>Search &amp; filter</h3><p>Filter by price, Witbank suburb and the things that matter.</p></div>
+    <div class="how-card"><div class="how-ico" id="howIco2"></div><h3>Real photos</h3><p>Every listing is reviewed before it goes live.</p></div>
+    <div class="how-card"><div class="how-ico" id="howIco3"></div><h3>Talk to an agent</h3><p>Each room has a named agent. One call to book.</p></div>
   </div>
 </section>
 
@@ -148,6 +149,6 @@
 </footer>
 
 <div class="toast-stack" id="toastStack"></div>
-<script src="public.js?v=11"></script>
+<script src="public.js?v=14"></script>
 </body>
 </html>

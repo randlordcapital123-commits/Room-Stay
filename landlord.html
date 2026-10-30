@@ -19,13 +19,14 @@
       </svg>
     </div>
     <h1>Landlord portal</h1>
-    <p class="login-sub">Sign in to list rooms in Witbank. First time? Your account is created automatically.</p>
-    <label class="field"><span>Full name</span><input id="loginName" required placeholder="e.g. Thandi Mokoena"></label>
+    <p class="login-sub">Sign in to list rooms in Witbank. Sign in to manage your rooms, or create a landlord account.</p>
+    <label class="field"><span>Full name</span><input id="loginName" placeholder="e.g. Thandi Mokoena"></label>
     <label class="field"><span>Email</span><input type="email" id="loginEmail" required placeholder="you@example.com" autocomplete="email"></label>
     <label class="field"><span>Phone</span><input id="loginPhone" placeholder="082 111 2233"></label>
     <label class="field"><span>Password</span><input type="password" id="loginPass" required minlength="8" placeholder="At least 8 characters" autocomplete="current-password"></label>
-    <p class="login-error" id="loginError"></p>
-    <button class="btn btn-primary btn-block" type="submit">Continue</button>
+    <button type="button" class="btn btn-ghost btn-block" id="forgotPasswordBtn">Forgot password?</button>
+    <p class="login-error" id="loginError" role="alert"></p>
+    <div class="form-actions" style="display:grid;gap:10px"><button class="btn btn-primary btn-block" type="submit" name="authAction" value="login">Sign in</button><button class="btn btn-ghost btn-block" type="submit" name="authAction" value="signup">Create landlord account</button></div>
     <p class="login-hint">Basic plan · R50/month · 2 room slots</p>
   </form>
 </div>
@@ -86,6 +87,7 @@
       <form class="panel form-panel" id="listingForm">
         <div class="form-grid">
           <label class="field span-2"><span>Listing title</span><input id="fTitle" required placeholder="e.g. Sunny garden room in Del Judor"></label>
+          <label class="field span-2"><span>Description</span><textarea id="fDescription" rows="4" maxlength="2000" placeholder="Describe the room, facilities, rules and nearby amenities"></textarea></label>
           <label class="field"><span>Street address</span><input id="fAddress" placeholder="14 Mandela Street"></label>
           <label class="field"><span>Suburb</span><input id="fSuburb" required placeholder="Del Judor"></label>
           <label class="field"><span>City</span><input id="fCity" required value="Witbank" placeholder="Witbank"></label>
@@ -101,7 +103,6 @@
 
           <label class="field"><span>Your price per month (R)</span><input type="number" id="fPrice" min="0" step="50" required placeholder="800"></label>
           <label class="field hidden" id="managedPriceWrap"><span>Your monthly payout (R)</span><input type="number" id="fManagedPayout" min="0" step="50" placeholder="800"></label>
-          <label class="field span-2"><span>Listing description</span><textarea id="fDescription" rows="4" maxlength="2000" placeholder="Describe the room, facilities, rules and what is nearby."></textarea></label>
         </div>
 
         <div class="subhead"><h2>What's included?</h2><p>Shown as icons on the listing.</p></div>
@@ -111,7 +112,7 @@
         <div class="upload-zone" id="uploadZone" role="button" tabindex="0">
           <span class="upload-ico" id="uploadIco"></span>
           <strong>Click to upload photos</strong>
-          <small>JPG or PNG, WebP · max 5 MB each</small>
+          <small>JPG or PNG</small>
           <input type="file" id="fImages" accept="image/*" multiple hidden>
         </div>
         <div class="preview-grid" id="previewGrid"></div>
@@ -126,6 +127,6 @@
 </div>
 
 <div class="toast-stack" id="toastStack"></div>
-<script src="landlord.js?v=13"></script>
+<script src="landlord.js?v=15"></script>
 </body>
 </html>

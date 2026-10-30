@@ -6,7 +6,7 @@
     if (window.Parse) return Promise.resolve();
     return new Promise(function (resolve, reject) {
       var s = document.createElement('script');
-      s.src = 'https://unpkg.com/parse@5.3.0/dist/parse.min.js';
+      s.src = 'https://unpkg.com/parse/dist/parse.min.js';
       s.async = true;
       s.onload = resolve;
       s.onerror = function () { reject(new Error('Could not load Parse SDK')); };
@@ -70,14 +70,6 @@
         return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
       });
     }
-    function safeImageUrl(value) {
-      var raw = String(value == null ? '' : value).trim();
-      if (/^https:\/\//i.test(raw) || /^http:\/\//i.test(raw)) return raw;
-      return '';
-    }
-    function imageAttr(value, fallback) {
-      return escapeHtml(safeImageUrl(value) || fallback || '');
-    }
     function money(a) {
       var n = Math.round(Number(a) || 0);
       return 'R' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -107,6 +99,11 @@
         setTimeout(function () { node.remove(); }, 260);
       }, 3200);
     }
+    function safeImageUrl(v, seed) {
+      var value = String(v || '').trim();
+      if (/^https:\/\//i.test(value) || /^http:\/\//i.test(value)) return value;
+      return placeholder(seed || 'room', 'Room');
+    }
     function parseArray(v) {
       if (Array.isArray(v)) return v;
       if (typeof v === 'string') { try { var r = JSON.parse(v); return Array.isArray(r) ? r : []; } catch (e) { return []; } }
@@ -114,41 +111,48 @@
     }
 
     async function fetchApproved() {
-      var q = new Parse.Query('Property');
-      q.equalTo('status', 'approved');
-      q.descending('createdAt');
-      q.limit(200);
-      try { return await q.find(); } catch (e) { console.error(e); throw e; }
+      try { return await Parse.Cloud.run('getApprovedProperties'); }
+      catch (cloudErr) {
+        console.warn('[Room Stay] Cloud listing function unavailable; using public approved query:', cloudErr.message);
+        var q = new Parse.Query('Property');
+        q.equalTo('status', 'approved');
+        q.descending('createdAt');
+        q.limit(200);
+        return await q.find();
+      }
     }
-    async function fetchById(id) { try { return await new Parse.Query('Property').get(id); } catch (e) { return null; } }
+    async function fetchById(id) { try { return await Parse.Cloud.run('getApprovedProperty', { propertyId: id }); } catch (e) { console.error('[Room Stay] Property detail load failed:', e); return null; } }
     async function fetchAgent(id) { if (!id) return null; try { return await new Parse.Query('Agent').get(id); } catch (e) { return null; } }
     async function fetchSettings() { try { var r = await new Parse.Query('SiteSettings').limit(1).find(); return r[0] || null; } catch (e) { return null; } }
 
     async function submitEnquiry(data) {
-      var Enq = Parse.Object.extend('Enquiry');
-      var e = new Enq();
-      Object.keys(data).forEach(function (k) { e.set(k, data[k]); });
-      var acl = new Parse.ACL();
-      acl.setPublicReadAccess(false);
-      e.setACL(acl);
-      return await e.save();
+      return await Parse.Cloud.run('submitViewingRequest', {
+        propertyId: data.property && data.property.id,
+        tenantName: data.tenantName,
+        tenantPhone: data.tenantPhone,
+        tenantEmail: data.tenantEmail,
+        people: data.people,
+        employment: data.employment,
+        moveInDate: data.moveInDate
+      });
     }
+
     function toPlain(p) {
-      var ag = p.get('agent');
+      var isParseObject = p && typeof p.get === 'function';
+      function val(key) { return isParseObject ? p.get(key) : p[key]; }
+      var ag = val('agent');
       return {
-        id: p.id, title: p.get('title') || '', description: p.get('description') || '',
-        suburb: p.get('suburb') || '', city: p.get('city') || '', address: p.get('address') || '',
-        type: p.get('type') || 'Room',
-        bedrooms: Number(p.get('bedrooms')) || 0,
-        bathrooms: Number(p.get('bathrooms')) || 0,
-        landlordPrice: Number(p.get('landlordPrice')) || 0,
-        publicPrice: Number(p.get('publicPrice')) || 0,
-        amenities: parseArray(p.get('amenities')),
-        images: parseArray(p.get('images')),
-        agentId: ag ? ag.id : null,
-        status: p.get('status') || 'pending',
-        managed: !!p.get('managed'),
-        createdAt: p.createdAt ? p.createdAt.getTime() : Date.now()
+        id: p.id || p.objectId, title: val('title') || '', description: val('description') || '',
+        suburb: val('suburb') || '', city: val('city') || '', address: val('address') || '',
+        type: val('type') || 'Room',
+        bedrooms: Number(val('bedrooms')) || 0,
+        bathrooms: Number(val('bathrooms')) || 0,
+        landlordPrice: Number(val('landlordPrice')) || 0,
+        publicPrice: Number(val('publicPrice')) || 0,
+        amenities: parseArray(val('amenities')), images: parseArray(val('images')),
+        agentId: val('agentId') || (ag ? ag.id : null),
+        status: val('status') || 'pending', managed: !!val('managed'),
+        createdAt: typeof val('createdAt') === 'number' ? val('createdAt') : (p.createdAt ? new Date(p.createdAt).getTime() : Date.now())
       };
     }
 
@@ -168,7 +172,7 @@
       var settings = await fetchSettings();
       if (settings && settings.get('heroImage')) {
         var hv = document.getElementById('heroVisual');
-        if (hv && safeImageUrl(settings.get('heroImage'))) { hv.innerHTML = ''; var img = document.createElement('img'); img.src = safeImageUrl(settings.get('heroImage')); img.alt = 'Room Stay hero'; hv.appendChild(img); }
+        if (hv) { hv.innerHTML = ''; var img = document.createElement('img'); img.src = settings.get('heroImage'); img.alt = 'Room Stay hero'; hv.appendChild(img); }
       }
 
       $('#amenityChips').innerHTML = AMENITIES.map(function (a) {
@@ -176,23 +180,27 @@
                '<span class="chip-ico">' + icon(a.key) + '</span>' + escapeHtml(a.label) + '</button>';
       }).join('');
 
-      var results = await fetchApproved();
-      var all = results.map(toPlain);
+      var all = [];
+      var loadError = null;
+      try { all = (await fetchApproved()).map(toPlain); }
+      catch (loadErr) { loadError = loadErr; console.error('[Room Stay] Could not load approved properties:', loadErr); }
+      var gridStatus = document.getElementById('gridStatus');
+      if (loadError && gridStatus) gridStatus.textContent = 'Rooms could not be loaded. Please refresh or try again later.';
 
       var agentCache = {};
-      try {
-        var publicAgents = await new Parse.Query('Agent').find();
-        publicAgents.forEach(function (a) {
-          agentCache[a.id] = { name: a.get('name') || '', phone: a.get('phone') || '', email: a.get('email') || '' };
-        });
-      } catch (agentError) { console.warn('Agent details unavailable.'); }
-      async function getAgent(id) { return id && agentCache[id] ? agentCache[id] : null; }
+      async function getAgent(id) {
+        if (!id) return null;
+        if (agentCache[id] !== undefined) return agentCache[id];
+        var a = await fetchAgent(id);
+        agentCache[id] = a ? { name: a.get('name'), phone: a.get('phone'), email: a.get('email') } : null;
+        return agentCache[id];
+      }
 
       function matches(p) {
         if (state.type !== 'all' && p.type !== state.type) return false;
         if (state.maxPrice && Number(p.publicPrice) > state.maxPrice) return false;
         if (state.q) {
-          var hay = [p.title, p.suburb, p.city, p.description].join(' ').toLowerCase();
+          var hay = [p.title, p.suburb, p.city, p.address, p.description].join(' ').toLowerCase();
           if (hay.indexOf(state.q) === -1) return false;
         }
         for (var i = 0; i < state.amenities.length; i++) {
@@ -218,19 +226,18 @@
           var iconsHtml = (p.amenities || []).slice(0, 5).map(function (k) {
             return '<span class="amenity" title="' + escapeHtml(amenityLabel(k)) + '">' + icon(k) + '</span>';
           }).join('');
-          var cover = imageAttr((p.images && p.images[0]) || '', placeholder(p.id, 'Room'));
+          var cover = safeImageUrl((p.images && p.images[0]), p.id);
           cards.push('<article class="card" data-id="' + escapeHtml(p.id) + '" tabindex="0">' +
-            '<div class="card-media"><img src="' + cover + '" alt="' + escapeHtml(p.title) + '" loading="lazy">' +
+            '<div class="card-media"><img src="' + escapeHtml(cover) + '" alt="' + escapeHtml(p.title) + '" loading="lazy">' +
               '<span class="price-pill">' + money(p.publicPrice) + '<small>/month</small></span></div>' +
             '<div class="card-body">' +
               '<h3 class="card-title">' + escapeHtml(p.title) + '</h3>' +
               '<p class="card-loc">' + icon('pin') + escapeHtml(p.suburb + ', ' + p.city) + '</p>' +
               '<div class="amenities">' + iconsHtml + '</div>' +
               '<div class="card-foot"><span>' + escapeHtml(p.type) + ' · ' + p.bedrooms + ' bed</span>' +
-              '<span>' + (agent ? escapeHtml((agent.name || 'Agent').trim().split(/\\s+/)[0]) : 'Room Stay') + '</span></div>' +
+              '<span>' + (agent ? escapeHtml(agent.name.split(' ')[0]) : 'Room Stay') + '</span></div>' +
             '</div></article>');
         }
-        if (thisRender !== renderVersion) return;
         grid.innerHTML = cards.join('');
         $('#resultCount').textContent = filtered.length + (filtered.length === 1 ? ' room' : ' rooms');
         if (!filtered.length) { grid.classList.add('hidden'); $('#emptyState').classList.remove('hidden'); }
@@ -287,18 +294,18 @@
 
       if (!id) return notFound('Room not found');
       var propObj = await fetchById(id);
-      if (!propObj || propObj.get('status') !== 'approved') return notFound(propObj ? 'This room is not live yet' : 'Room not found');
+      if (!propObj || propObj.status !== 'approved') return notFound('Room not found or no longer available');
 
       var p = toPlain(propObj);
       var agentObj = p.agentId ? await fetchAgent(p.agentId) : null;
       var agent = agentObj ? { name: agentObj.get('name'), phone: agentObj.get('phone'), email: agentObj.get('email') } : null;
-      var images = (p.images && p.images.length) ? p.images : [placeholder(p.id, 'Room')];
+      var images = (p.images && p.images.length) ? p.images.map(function (src) { return safeImageUrl(src, p.id); }) : [placeholder(p.id, 'Room')];
       var amenityItems = (p.amenities || []).map(function (k) {
         return '<div class="amenity-item">' + icon(k) + '<span>' + escapeHtml(amenityLabel(k)) + '</span></div>';
       }).join('');
       var thumbs = images.map(function (src, i) {
         return '<div class="thumb' + (i === 0 ? ' active' : '') + '" data-index="' + i + '">' +
-               '<img src="' + imageAttr(src, placeholder(p.id, 'Room')) + '" alt="Photo ' + (i + 1) + '"></div>';
+               '<img src="' + escapeHtml(safeImageUrl(src, p.id)) + '" alt="Photo ' + (i + 1) + '"></div>';
       }).join('');
 
       var agentBlock = agent
@@ -321,10 +328,10 @@
       }
 
       root.innerHTML = '<div class="detail-grid"><div class="detail-main">' +
-        '<div class="gallery-main"><img id="mainImage" src="' + imageAttr(images[0], placeholder(p.id, 'Room')) + '" alt="' + escapeHtml(p.title) + '"></div>' +
+        '<div class="gallery-main"><img id="mainImage" src="' + escapeHtml(images[0]) + '" alt="' + escapeHtml(p.title) + '"></div>' +
         '<div class="gallery-thumbs" id="thumbs">' + thumbs + '</div>' +
         '<h1 class="detail-title">' + escapeHtml(p.title) + '</h1>' +
-        '<p class="detail-loc">' + icon('pin') + escapeHtml(p.suburb + ', ' + p.city) + '</p>' +
+        '<p class="detail-loc">' + icon('pin') + escapeHtml((p.address ? p.address + ', ' : '') + p.suburb + ', ' + p.city) + '</p>' +
         '<div class="meta-row">' +
           '<span class="meta-chip">' + icon('home') + escapeHtml(p.type) + '</span>' +
           '<span class="meta-chip">' + icon('bed') + p.bedrooms + ' bedroom' + (p.bedrooms > 1 ? 's' : '') + '</span>' +
@@ -346,7 +353,7 @@
       $('#thumbs').addEventListener('click', function (e) {
         var t = e.target.closest('.thumb'); if (!t) return;
         var i = Number(t.dataset.index);
-        $('#mainImage').src = safeImageUrl(images[i]) || placeholder(p.id, 'Room');
+        $('#mainImage').src = images[i];
         $$('.thumb').forEach(function (x) { x.classList.toggle('active', x === t); });
       });
 
@@ -355,7 +362,7 @@
       var closeBtn = document.getElementById('closeBooking');
 
       function openModal() { if (!modal) return; modal.classList.remove('hidden'); document.body.style.overflow = 'hidden';
-        var m = document.getElementById('bookMoveIn'); if (m) var now = new Date(); m.min = [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-'); }
+        var m = document.getElementById('bookMoveIn'); if (m) m.min = new Date().toISOString().split('T')[0]; }
       function closeModal() { if (!modal) return; modal.classList.add('hidden'); document.body.style.overflow = ''; }
 
       $('#bookBtn').addEventListener('click', openModal);
@@ -373,7 +380,7 @@
           await submitEnquiry({
             property: propObj,
             propertyTitle: p.title,
-            propertyImage: (p.images && p.images[0]) || null,
+            propertyImage: (p.images && p.images[0]) ? safeImageUrl(p.images[0], p.id) : null,
             agent: agentObj || null,
             agentName: agent ? agent.name : null,
             agentPhone: agent ? agent.phone : null,
@@ -387,8 +394,8 @@
           });
           form.reset();
           closeModal();
-          var who = agent ? (agent.name || 'Agent').trim().split(/\\s+/)[0] : 'the Room Stay team';
-          toast('Request sent to ' + who + '. They will call you shortly.');
+          var who = agent ? agent.name.split(' ')[0] : 'the Room Stay team';
+          toast('Your viewing request has been submitted to Room Stay.');
         } catch (err) {
           console.error(err);
           toast('Could not send request. Try again.');

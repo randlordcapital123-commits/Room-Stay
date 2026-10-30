@@ -20,8 +20,10 @@
     </div>
     <h1 id="loginTitle">Admin access</h1>
     <p class="login-sub" id="loginSub">Sign in to review listings, set public prices and manage agents.</p>
+    <label class="field"><span>Admin email</span><input type="email" id="adminEmail" required placeholder="admin@example.com" autocomplete="username"></label>
     <label class="field"><span>Password</span><input type="password" id="adminPass" required placeholder="Enter password"></label>
-    <p class="login-error" id="loginError"></p>
+    <button type="button" class="btn btn-ghost btn-block" id="forgotPasswordBtn">Forgot password?</button>
+    <p class="login-error" id="loginError" role="alert"></p>
     <button class="btn btn-primary btn-block" type="submit" id="loginSubmitBtn">Sign in</button>
   </form>
 </div>
@@ -102,7 +104,7 @@
         <label class="field"><span>Site name</span><input id="setSiteName"></label>
         <label class="field"><span>Default commission (R)</span><input type="number" id="setCommission" min="0" step="50"></label>
         <label class="field"><span>Management fee (%)</span><input type="number" id="setMgmtFee" min="0" step="1"></label>
-        <p class="login-sub">For security, change administrator passwords through Back4App account management. In-dashboard password changes are not enabled.</p>
+        <label class="field"><span>Change admin password</span><input type="password" id="setPassword" placeholder="Leave blank to keep current" autocomplete="new-password"></label>
         <div class="subhead"><h2>Hero image</h2><p>Shown at the top of the public homepage.</p></div>
         <div class="upload-zone" id="heroUploadZone" role="button" tabindex="0">
           <span class="upload-ico" id="heroUploadIco"></span>
@@ -123,6 +125,6 @@
 </div>
 
 <div class="toast-stack" id="toastStack"></div>
-<script src="dashboard.js?v=11"></script>
+<script src="dashboard.js?v=15"></script>
 </body>
 </html>

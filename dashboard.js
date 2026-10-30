@@ -8,7 +8,7 @@
     if (window.Parse) return Promise.resolve();
     return new Promise(function (resolve, reject) {
       var s = document.createElement('script');
-      s.src = 'https://unpkg.com/parse@5.3.0/dist/parse.min.js';
+      s.src = 'https://unpkg.com/parse/dist/parse.min.js';
       s.async = true;
       s.onload = resolve;
       s.onerror = function () { reject(new Error('Could not load Parse SDK')); };
@@ -52,14 +52,6 @@
         return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
       });
     }
-    function safeImageUrl(value) {
-      var raw = String(value == null ? '' : value).trim();
-      if (/^https:\/\//i.test(raw) || /^http:\/\//i.test(raw)) return raw;
-      return '';
-    }
-    function imageAttr(value, fallback) {
-      return esc(safeImageUrl(value) || fallback || '');
-    }
     function money(a) {
       var n = Math.round(Number(a) || 0);
       return 'R' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -99,16 +91,14 @@
     }
     function telHref(phone) { return 'tel:' + String(phone || '').replace(/[^0-9+]/g, ''); }
     function chip(text) { return '<span style="background:rgba(0,0,0,.045);border-radius:999px;padding:5px 11px;font-size:12.5px;color:var(--ink-2)">' + esc(text) + '</span>'; }
+    function safeImageUrl(v, seed) { var u = String(v || '').trim(); return (/^https?:\/\//i.test(u) ? u : placeholder(seed || 'room', 'Room')); }
     function parseArray(v) {
       if (Array.isArray(v)) return v;
       if (typeof v === 'string') { try { var r = JSON.parse(v); return Array.isArray(r) ? r : []; } catch (e) { return []; } }
       return [];
     }
     async function uploadFile(file, prefix) {
-      var allowed = { 'image/jpeg':'jpg', 'image/png':'png', 'image/webp':'webp' };
-      if (!file || !allowed[file.type]) throw new Error('Only JPG, PNG or WebP images are allowed.');
-      if (file.size > 5 * 1024 * 1024) throw new Error('Image must be 5 MB or smaller.');
-      var ext = allowed[file.type];
+      var ext = (file.name || 'file').split('.').pop().toLowerCase() || 'jpg';
       var name = prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) + '.' + ext;
       var pf = new Parse.File(name, file);
       await pf.save();
@@ -136,27 +126,18 @@
       }
     }
 
-    fetchSettings().then(function (settings) {
-      var adminClaimed = settings && settings.get('adminClaimed');
-      var titleEl = document.getElementById('loginTitle');
-      var subEl = document.getElementById('loginSub');
-      var submitBtn = document.getElementById('loginSubmitBtn');
-      if (!adminClaimed) {
-        if (titleEl) titleEl.textContent = 'Set up admin account';
-        if (subEl) subEl.textContent = 'Create the first admin account for this site. Use a strong password.';
-        if (submitBtn) submitBtn.textContent = 'Create admin account';
-        if (document.getElementById('adminPass')) {
-          document.getElementById('adminPass').setAttribute('minlength', '8');
-          document.getElementById('adminPass').setAttribute('autocomplete', 'new-password');
-        }
-      }
-      window.__adminClaimed = adminClaimed;
-      window.__settings = settings;
-    });
+    async function isAdminUser(user) {
+      if (!user) return false;
+      try { var result = await Parse.Cloud.run('checkUserRole', { roleName: 'Admin' }); return !!(result && result.allowed); }
+      catch (err) { console.error('[Admin] Role verification failed:', err); return false; }
+    }
 
     var currentUser = Parse.User.current();
-    if (currentUser && currentUser.get('isAdmin') === true) {
-      showApp();
+    if (currentUser) {
+      isAdminUser(currentUser).then(function (allowed) {
+        if (allowed) showApp();
+        else { Parse.User.logOut(); var err = document.getElementById('loginError'); if (err) err.textContent = 'This account does not have administrator access.'; }
+      });
     }
 
     function showApp() {
@@ -170,9 +151,9 @@
 
     async function loadEverything() {
       try {
-        var pq = new Parse.Query('Property'); pq.descending('createdAt'); properties = await pq.find();
-        var aq = new Parse.Query('Agent'); agents = await aq.find();
-        var eq = new Parse.Query('Enquiry'); eq.descending('createdAt'); enquiries = await eq.find();
+        properties = await Parse.Cloud.run('adminListProperties');
+        agents = await Parse.Cloud.run('adminListAgents');
+        enquiries = await Parse.Cloud.run('adminListEnquiries');
         settingsCache = await fetchSettings();
         console.log('[Admin] Loaded', properties.length, 'properties');
       } catch (err) { console.error('[Admin] load failed:', err); toast('Could not load data.'); }
@@ -189,45 +170,29 @@
         if (!email || email.indexOf('@') === -1) { if (errEl) errEl.textContent = 'Enter a valid email.'; return; }
         if (!password || password.length < 8) { if (errEl) errEl.textContent = 'Password must be at least 8 characters.'; return; }
 
-        var adminClaimed = window.__adminClaimed;
-        var settings = window.__settings;
-
-        if (!adminClaimed) {
-          try {
-            var user = new Parse.User();
-            user.set('username', email); user.set('email', email); user.set('password', password);
-            user.set('isAdmin', true); user.set('isLandlord', false);
-            await user.signUp();
-            var S = Parse.Object.extend('SiteSettings');
-            var s = settings || new S();
-            s.set('siteName', 'Room Stay');
-            s.set('defaultCommission', 400);
-            s.set('managementFee', 15);
-            s.set('adminClaimed', true);
-            s.set('adminId', user.id);
-            var acl = new Parse.ACL();
-            acl.setPublicReadAccess(true);
-            acl.setReadAccess(user.id, true);
-            acl.setWriteAccess(user.id, true);
-            s.setACL(acl);
-            await s.save();
-            toast('Admin account created.');
-            location.reload();
-            return;
-          } catch (err) {
-            console.error('[Admin] signup failed:', err.code, err.message);
-            if (errEl) errEl.textContent = 'Could not create admin: ' + (err.message || 'unknown error');
-            return;
-          }
-        }
-
         try {
           var u = await Parse.User.logIn(email, password);
-          if (!u.get('isAdmin')) { await Parse.User.logOut(); if (errEl) errEl.textContent = 'Not an admin.'; return; }
+          if (!(await isAdminUser(u))) {
+            await Parse.User.logOut();
+            if (errEl) errEl.textContent = 'This account is not assigned to the Admin role. Ask the application owner to assign your account in Back4App.';
+            return;
+          }
           showApp();
-        } catch (err) { if (errEl) errEl.textContent = 'Wrong email or password.'; }
+        } catch (err) {
+          console.error('[Admin] Login failed:', err);
+          if (errEl) errEl.textContent = err.code === 101 ? 'Incorrect email or password.' : 'Could not sign in. Check your connection and try again.';
+        }
       });
     }
+
+    var forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+    if (forgotPasswordBtn) forgotPasswordBtn.addEventListener('click', async function () {
+      var email = (adminEmailInput ? adminEmailInput.value : '').trim().toLowerCase();
+      var errEl = document.getElementById('loginError');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (errEl) errEl.textContent = 'Enter your admin email first.'; return; }
+      try { await Parse.User.requestPasswordReset(email); if (errEl) errEl.textContent = 'If the account exists, a password reset email has been sent.'; }
+      catch (err) { if (errEl) errEl.textContent = 'Could not send reset email. Check Back4App email settings.'; }
+    });
 
     var signOutBtn = document.getElementById('signOutBtn');
     if (signOutBtn) {
@@ -262,7 +227,7 @@
         stat('clock', 'Awaiting approval', pending.length, 'needs your review') +
         stat('mail', 'New requests', newEnq.length, 'from the public site') +
         stat('check', 'Live on site', approved.length, 'visible to the public') +
-        stat('money', 'Commission (live)', money(earned), 'potential monthly margin if all are rented') +
+        stat('money', 'Commission (live)', money(earned), 'per month when rented') +
         stat('users', 'Managed properties', managed.length, 'on Property Management');
 
       var pb = document.getElementById('pendingBadge'); if (pb) pb.textContent = pending.length;
@@ -273,8 +238,8 @@
       if (!pending.length) { list.innerHTML = '<p class="login-sub" style="margin:0">Nothing waiting.</p>'; return; }
       list.innerHTML = pending.slice(0, 5).map(function (p) {
         var imgs = parseArray(p.get('images'));
-        var img = imgs[0] || placeholder(p.id, 'Room');
-        return '<div class="pending-item"><img src="' + imageAttr(img, placeholder(p.id, 'Room')) + '" alt="">' +
+        var img = safeImageUrl(imgs[0], p.id);
+        return '<div class="pending-item"><img src="' + esc(img) + '" alt="">' +
           '<div><strong>' + esc(p.get('title')) + '</strong>' +
           '<small>' + esc(p.get('suburb') + ', ' + p.get('city')) + ' · ' + money(p.get('landlordPrice')) + '</small></div>' +
           '<button class="btn btn-ghost btn-sm" data-review="' + esc(p.id) + '">Review</button></div>';
@@ -290,7 +255,7 @@
     }
 
     function renderProperties() {
-      var defaultComm = settingsCache ? (settingsCache.get('defaultCommission') == null ? 400 : Number(settingsCache.get('defaultCommission'))) : 400;
+      var defaultComm = settingsCache ? Number(settingsCache.get('defaultCommission')) || 400 : 400;
       var list = properties.slice();
       if (activeStatus !== 'all') list = list.filter(function (p) { return p.get('status') === activeStatus; });
       list.sort(function (a, b) {
@@ -304,12 +269,11 @@
 
       wrap.innerHTML = list.map(function (p) {
         var imgs = parseArray(p.get('images'));
-        var img = imgs[0] || placeholder(p.id, 'Room');
+        var img = safeImageUrl(imgs[0], p.id);
         var agentRef = p.get('agent');
         var base = Number(p.get('landlordPrice')) || 0;
         var isManaged = !!p.get('managed');
-        var savedPublicPrice = p.get('publicPrice');
-        var suggested = savedPublicPrice == null ? (base + defaultComm) : Number(savedPublicPrice);
+        var suggested = Number(p.get('publicPrice')) || (base + defaultComm);
         var comm = suggested - base;
         var status = p.get('status');
         var enqCount = enquiries.filter(function (e) { var r = e.get('property'); return r && r.id === p.id; }).length;
@@ -325,7 +289,7 @@
         if (status !== 'rejected') actions += '<button class="btn btn-ghost btn-sm" data-action="reject" data-id="' + esc(p.id) + '">Reject</button>';
 
         return '<div class="row">' +
-          '<img class="row-thumb" src="' + imageAttr(img, placeholder(p.id, 'Room')) + '" alt="">' +
+          '<img class="row-thumb" src="' + esc(img) + '" alt="">' +
           '<div class="row-main">' +
             '<h4>' + esc(p.get('title')) + ' ' + (isManaged ? '<span style="background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;letter-spacing:.02em">MANAGED</span>' : '') + '</h4>' +
             '<p class="row-loc">' + icon('pin') + esc(p.get('suburb') + ', ' + p.get('city')) + '</p>' +
@@ -370,9 +334,7 @@
         var p = properties.find(function (x) { return x.id === id; });
         if (!p) return;
         try {
-          if (agentId) { var A = Parse.Object.extend('Agent'); p.set('agent', A.createWithoutData(agentId)); }
-          else p.unset('agent');
-          await p.save(); toast('Agent updated.'); await loadEverything(); renderAll();
+          await Parse.Cloud.run('adminAssignAgent', { propertyId: id, agentId: agentId }); toast('Agent updated.'); await loadEverything(); renderAll();
         } catch (err) { toast('Could not update agent.'); }
       });
       propertyRows.addEventListener('click', async function (e) {
@@ -385,15 +347,12 @@
             var price = Number(input ? input.value : 0);
             if (!price || price <= 0) { toast('Enter a public price.'); return; }
             if (price < (Number(p.get('landlordPrice')) || 0)) { toast('Public price below landlord price.'); return; }
-            p.set('status', 'approved'); p.set('publicPrice', price); p.set('approvedAt', new Date());
-            var acl = new Parse.ACL(); acl.setPublicReadAccess(true);
-            var owner = p.get('owner'); if (owner) acl.setWriteAccess(owner.id, true);
-            acl.setWriteAccess(Parse.User.current().id, true); p.setACL(acl);
-            await p.save(); toast('Published at ' + money(price) + '.');
+            await Parse.Cloud.run('adminSetPropertyStatus', { propertyId: id, status: 'approved', publicPrice: price });
+            toast('Published at ' + money(price) + '.');
           } else if (action === 'unpublish') {
-            p.set('status', 'pending'); await p.save(); toast('Unpublished.');
-          } else if (action === 'reject') { p.set('status', 'rejected'); await p.save(); toast('Rejected.'); }
-          else if (action === 'delete') { if (!confirm('Delete this listing permanently?')) return; await p.destroy(); toast('Deleted.'); }
+            await Parse.Cloud.run('adminSetPropertyStatus', { propertyId: id, status: 'pending' }); toast('Unpublished.');
+          } else if (action === 'reject') { await Parse.Cloud.run('adminSetPropertyStatus', { propertyId: id, status: 'rejected' }); toast('Rejected.'); }
+          else if (action === 'delete') { if (!confirm('Delete this listing permanently?')) return; await Parse.Cloud.run('adminDeleteProperty', { propertyId: id }); toast('Deleted.'); }
           await loadEverything(); renderAll();
         } catch (err) { console.error(err); toast('Action failed.'); }
       });
@@ -416,7 +375,7 @@
         var html = '<button class="tab' + (activeEnqAgent === 'all' ? ' active' : '') + '" data-agent="all">All</button>';
         agents.forEach(function (a) {
           var n = enquiries.filter(function (e) { var r = e.get('agent'); return r && r.id === a.id && e.get('status') === 'new'; }).length;
-          html += '<button class="tab' + (activeEnqAgent === a.id ? ' active' : '') + '" data-agent="' + esc(a.id) + '">' + esc(String(a.get('name') || 'Agent').trim().split(/\\s+/)[0]) + (n > 0 ? ' (' + n + ')' : '') + '</button>';
+          html += '<button class="tab' + (activeEnqAgent === a.id ? ' active' : '') + '" data-agent="' + esc(a.id) + '">' + esc(String(a.get('name') || 'Agent').split(' ')[0]) + (n > 0 ? ' (' + n + ')' : '') + '</button>';
         });
         enqTabs.innerHTML = html;
       }
@@ -450,7 +409,7 @@
         actions += '<button class="icon-btn" data-enq-act="delete" data-id="' + esc(enq.id) + '" title="Delete">' + icon('trash') + '</button>';
 
         return '<div class="row">' +
-          '<img class="row-thumb" src="' + imageAttr(img, placeholder(p.id, 'Room')) + '" alt="">' +
+          '<img class="row-thumb" src="' + esc(img) + '" alt="">' +
           '<div class="row-main">' +
             '<h4>' + esc(enq.get('propertyTitle') || (prop && prop.get('title')) || 'Room') + '</h4>' +
             '<p class="row-loc">' + icon('mail') + esc(enq.get('tenantName')) + ' · ' + esc(enq.get('tenantPhone')) +
@@ -483,7 +442,7 @@
         var id = btn.dataset.id; var act = btn.dataset.enqAct;
         var enq = enquiries.find(function (x) { return x.id === id; }); if (!enq) return;
         try {
-          if (act === 'contacted') { enq.set('status', 'contacted'); enq.set('contactedAt', new Date()); await enq.save(); toast('Marked contacted.'); }
+          if (act === 'contacted') { await Parse.Cloud.run('adminUpdateEnquiry', { enquiryId: enq.id, status: 'contacted' }); toast('Marked contacted.'); }
           else if (act === 'delete') { if (!confirm('Delete this request?')) return; await enq.destroy(); toast('Deleted.'); }
           await loadEverything(); renderAll();
         } catch (err) { toast('Action failed.'); }
@@ -553,7 +512,7 @@
     function refreshHeroPreview() {
       if (!heroPreview || !heroPreviewWrap) return;
       var url = settingsCache ? settingsCache.get('heroImage') : null;
-      if (safeImageUrl(url)) { heroPreview.src = safeImageUrl(url); heroPreviewWrap.classList.remove('hidden'); }
+      if (url) { heroPreview.src = url; heroPreviewWrap.classList.remove('hidden'); }
       else { heroPreview.removeAttribute('src'); heroPreviewWrap.classList.add('hidden'); }
     }
     if (heroInput && heroZone) {
@@ -579,11 +538,11 @@
     if (settingsForm) {
       settingsForm.addEventListener('submit', async function (e) {
         e.preventDefault();
-        if (!settingsCache) return;
+        if (!settingsCache) { var SettingsClass = Parse.Object.extend('SiteSettings'); settingsCache = new SettingsClass(); }
         try {
           settingsCache.set('siteName', ((document.getElementById('setSiteName') || {}).value || 'Room Stay').trim());
-          settingsCache.set('defaultCommission', Number((document.getElementById('setCommission') || {}).value));
-          settingsCache.set('managementFee', Number((document.getElementById('setMgmtFee') || {}).value));
+          settingsCache.set('defaultCommission', (document.getElementById('setCommission') || {}).value === '' ? 400 : Number(document.getElementById('setCommission').value));
+          settingsCache.set('managementFee', (document.getElementById('setMgmtFee') || {}).value === '' ? 15 : Number(document.getElementById('setMgmtFee').value));
           await settingsCache.save(); toast('Settings saved.'); await loadEverything(); renderAll();
         } catch (err) { toast('Could not save settings.'); }
       });
